@@ -135,6 +135,8 @@ export function runAnnotationQuery(
       sliceFormData.extra_filters = hasExtraFilters
         ? fd.extra_filters
         : undefined;
+      // we want to include any adhoc_filters present in form_data
+      sliceFormData.adhoc_filters = fd.adhoc_filters;
     }
 
     const isNative = annotation.sourceType === ANNOTATION_SOURCE_TYPES.NATIVE;
