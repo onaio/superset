@@ -101,7 +101,7 @@ class UtilsTestCase(SupersetTestCase):
         request_form_data = {'form_data': '''{
             "adhoc_filters": [
                 {
-                    "clause": "WHEREGUN",
+                    "clause": "WHERE",
                     "comparator": "someval",
                     "expressionType": "SIMPLE",
                     "operator": "in",
