@@ -19,6 +19,7 @@ import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
+import json
 
 import numpy
 from flask import Flask
@@ -52,7 +53,7 @@ from superset.utils.core import (
     zlib_compress,
     zlib_decompress,
 )
-from superset.views.utils import get_time_range_endpoints
+from superset.views.utils import get_time_range_endpoints, get_form_data
 from tests.base_tests import SupersetTestCase
 
 
@@ -95,6 +96,50 @@ def mock_to_adhoc(filt, expressionType="SIMPLE", clause="where"):
 
 
 class UtilsTestCase(SupersetTestCase):
+    def test_get_form_data(self):
+        # do not overwrite existing adhoc_filters on slice
+        request_form_data = {'form_data': '''{
+            "adhoc_filters": [
+                {
+                    "clause": "WHEREGUN",
+                    "comparator": "someval",
+                    "expressionType": "SIMPLE",
+                    "operator": "in",
+                    "subject": "a"
+                },
+                {
+                    "clause": "WHERE",
+                    "comparator": ["c1", "c2"],
+                    "expressionType": "SIMPLE",
+                    "operator": "==",
+                    "subject": "B"
+                }
+            ]
+        }'''}
+        request_mock = unittest.mock.MagicMock()
+        request_mock.form = request_form_data
+        request_mock.args = {}
+        with unittest.mock.patch("superset.views.utils.request", request_mock):
+            form_data, _ = get_form_data()
+            self.assertEqual(form_data, json.loads(request_form_data.get('form_data')))
+
+        # request params overwrite post body
+        request_args_data = {'form_data': '''{
+            "adhoc_filters": [
+                {
+                    "clause": "WHEREGUN",
+                    "comparator": "someval",
+                    "expressionType": "SIMPLE",
+                    "operator": "in",
+                    "subject": "a"
+                }
+            ]
+        }'''}
+        request_mock.args = request_args_data
+        with unittest.mock.patch("superset.views.utils.request", request_mock):
+            form_data, _ = get_form_data()
+            self.assertEqual(form_data, json.loads(request_args_data.get('form_data')))
+
     def test_json_int_dttm_ser(self):
         dttm = datetime(2020, 1, 1)
         ts = 1577836800000.0
