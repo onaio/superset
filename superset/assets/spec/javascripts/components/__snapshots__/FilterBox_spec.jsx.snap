@@ -1,0 +1,963 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`FilterBox renders filterbox correctly 1`] = `
+<FilterBox
+  chartId={12}
+  filtersChoices={
+    Object {
+      "country_name": Array [
+        Object {
+          "id": "China",
+          "metric": 474644,
+          "text": "China",
+        },
+        Object {
+          "id": "India",
+          "metric": 737373,
+          "text": "India",
+        },
+        Object {
+          "id": "Brazil",
+          "metric": 664637,
+          "text": "Brazil",
+        },
+        Object {
+          "id": "Nigeria",
+          "metric": 764738,
+          "text": "Nigeria",
+        },
+      ],
+      "region": Array [
+        Object {
+          "id": "South Asia",
+          "metric": 4636536262,
+          "text": "South Asia",
+        },
+        Object {
+          "id": "Sub-Saharan Africa",
+          "metric": 564637373736,
+          "text": "Sub-Saharan Africa",
+        },
+        Object {
+          "id": "Latin America & Caribbean",
+          "metric": 1242265626,
+          "text": "Latin America & Caribbean",
+        },
+      ],
+    }
+  }
+  filtersFields={
+    Array [
+      Object {
+        "asc": false,
+        "clearable": true,
+        "column": "region",
+        "key": "region",
+        "label": "region",
+        "metric": "sum__SP_POP_TOTL",
+        "multiple": true,
+      },
+      Object {
+        "asc": false,
+        "clearable": true,
+        "column": "country_name",
+        "key": "country_name",
+        "label": "country_name",
+        "metric": "sum__SP_POP_TOTL",
+        "multiple": true,
+      },
+    ]
+  }
+  instantFiltering={true}
+  onChange={[Function]}
+  onFilterMenuClose={[Function]}
+  onFilterMenuOpen={[Function]}
+  origSelectedValues={Object {}}
+  showDateFilter={false}
+  showDruidTimeGrain={false}
+  showDruidTimeOrigin={false}
+  showSqlaTimeColumn={false}
+  showSqlaTimeGrain={false}
+>
+  <div
+    className="scrollbar-container"
+  >
+    <div
+      className="scrollbar-content"
+    >
+      <div
+        className="m-b-5 filter-container"
+        key="region"
+      >
+        <div
+          className="filter-badge-container"
+        >
+          <FilterBadgeIcon>
+            <svg
+              className="filter-badge "
+              height="20"
+              viewBox="0 0 20 20"
+              width="20"
+            >
+              <path
+                d="M4 5H16V7H4V5ZM6 9H14V11H6V9ZM12 13H8V15H12V13Z"
+              />
+            </svg>
+          </FilterBadgeIcon>
+        </div>
+        <div>
+          <label
+            htmlFor="LABEL-region"
+          >
+            region
+          </label>
+          <OnPasteSelect
+            clearable={true}
+            key="region"
+            labelKey="label"
+            multi={true}
+            noResultsText="No results found"
+            onBlur={[Function]}
+            onChange={[Function]}
+            onClose={[Function]}
+            onFocus={[Function]}
+            onOpen={[Function]}
+            optionRenderer={[Function]}
+            options={
+              Array [
+                Object {
+                  "label": "South Asia",
+                  "style": Object {
+                    "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 1%, rgba(0,0,0,0) 1%",
+                    "padding": "2px 5px",
+                  },
+                  "value": "South Asia",
+                },
+                Object {
+                  "label": "Sub-Saharan Africa",
+                  "style": Object {
+                    "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                    "padding": "2px 5px",
+                  },
+                  "value": "Sub-Saharan Africa",
+                },
+                Object {
+                  "label": "Latin America & Caribbean",
+                  "style": Object {
+                    "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 0%, rgba(0,0,0,0) 0%",
+                    "padding": "2px 5px",
+                  },
+                  "value": "Latin America & Caribbean",
+                },
+              ]
+            }
+            placeholder="Select [region]"
+            selectComponent={[Function]}
+            selectWrap={[Function]}
+            separator={
+              Array [
+                ",",
+                "
+",
+                "	",
+              ]
+            }
+            value={null}
+            valueKey="value"
+          >
+            <VirtualizedSelect
+              async={false}
+              clearable={true}
+              inputProps={
+                Object {
+                  "onPaste": [Function],
+                }
+              }
+              labelKey="label"
+              maxHeight={200}
+              multi={true}
+              noResultsText="No results found"
+              onBlur={[Function]}
+              onChange={[Function]}
+              onClose={[Function]}
+              onFocus={[Function]}
+              onOpen={[Function]}
+              optionHeight={35}
+              optionRenderer={[Function]}
+              options={
+                Array [
+                  Object {
+                    "label": "South Asia",
+                    "style": Object {
+                      "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 1%, rgba(0,0,0,0) 1%",
+                      "padding": "2px 5px",
+                    },
+                    "value": "South Asia",
+                  },
+                  Object {
+                    "label": "Sub-Saharan Africa",
+                    "style": Object {
+                      "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                      "padding": "2px 5px",
+                    },
+                    "value": "Sub-Saharan Africa",
+                  },
+                  Object {
+                    "label": "Latin America & Caribbean",
+                    "style": Object {
+                      "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 0%, rgba(0,0,0,0) 0%",
+                      "padding": "2px 5px",
+                    },
+                    "value": "Latin America & Caribbean",
+                  },
+                ]
+              }
+              placeholder="Select [region]"
+              selectComponent={[Function]}
+              selectWrap={[Function]}
+              separator={
+                Array [
+                  ",",
+                  "
+",
+                  "	",
+                ]
+              }
+              value={null}
+              valueKey="value"
+            >
+              <CreatableSelect
+                async={false}
+                clearable={true}
+                filterOptions={[Function]}
+                inputProps={
+                  Object {
+                    "onPaste": [Function],
+                  }
+                }
+                isOptionUnique={[Function]}
+                isValidNewOption={[Function]}
+                labelKey="label"
+                maxHeight={200}
+                menuRenderer={[Function]}
+                menuStyle={
+                  Object {
+                    "overflow": "hidden",
+                  }
+                }
+                multi={true}
+                newOptionCreator={[Function]}
+                noResultsText="No results found"
+                onBlur={[Function]}
+                onChange={[Function]}
+                onClose={[Function]}
+                onFocus={[Function]}
+                onOpen={[Function]}
+                optionHeight={35}
+                optionRenderer={[Function]}
+                options={
+                  Array [
+                    Object {
+                      "label": "South Asia",
+                      "style": Object {
+                        "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 1%, rgba(0,0,0,0) 1%",
+                        "padding": "2px 5px",
+                      },
+                      "value": "South Asia",
+                    },
+                    Object {
+                      "label": "Sub-Saharan Africa",
+                      "style": Object {
+                        "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                        "padding": "2px 5px",
+                      },
+                      "value": "Sub-Saharan Africa",
+                    },
+                    Object {
+                      "label": "Latin America & Caribbean",
+                      "style": Object {
+                        "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 0%, rgba(0,0,0,0) 0%",
+                        "padding": "2px 5px",
+                      },
+                      "value": "Latin America & Caribbean",
+                    },
+                  ]
+                }
+                placeholder="Select [region]"
+                promptTextCreator={[Function]}
+                selectComponent={[Function]}
+                selectWrap={[Function]}
+                separator={
+                  Array [
+                    ",",
+                    "
+",
+                    "	",
+                  ]
+                }
+                shouldKeyDownEventCreateNewOption={[Function]}
+                value={null}
+                valueKey="value"
+              >
+                <Select
+                  allowCreate={true}
+                  arrowRenderer={[Function]}
+                  async={false}
+                  autosize={true}
+                  backspaceRemoves={true}
+                  backspaceToRemoveMessage="Press backspace to remove {label}"
+                  clearAllText="Clear all"
+                  clearRenderer={[Function]}
+                  clearValueText="Clear value"
+                  clearable={true}
+                  closeOnSelect={true}
+                  deleteRemoves={true}
+                  delimiter=","
+                  disabled={false}
+                  escapeClearsValue={true}
+                  filterOptions={[Function]}
+                  ignoreAccents={true}
+                  ignoreCase={true}
+                  inputProps={
+                    Object {
+                      "onPaste": [Function],
+                    }
+                  }
+                  isLoading={false}
+                  isOptionUnique={[Function]}
+                  isValidNewOption={[Function]}
+                  joinValues={false}
+                  labelKey="label"
+                  matchPos="any"
+                  matchProp="any"
+                  maxHeight={200}
+                  menuBuffer={0}
+                  menuRenderer={[Function]}
+                  menuStyle={
+                    Object {
+                      "overflow": "hidden",
+                    }
+                  }
+                  multi={true}
+                  newOptionCreator={[Function]}
+                  noResultsText="No results found"
+                  onBlur={[Function]}
+                  onBlurResetsInput={true}
+                  onChange={[Function]}
+                  onClose={[Function]}
+                  onCloseResetsInput={true}
+                  onFocus={[Function]}
+                  onInputChange={[Function]}
+                  onInputKeyDown={[Function]}
+                  onOpen={[Function]}
+                  onSelectResetsInput={true}
+                  openOnClick={true}
+                  optionComponent={[Function]}
+                  optionHeight={35}
+                  optionRenderer={[Function]}
+                  options={
+                    Array [
+                      Object {
+                        "label": "South Asia",
+                        "style": Object {
+                          "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 1%, rgba(0,0,0,0) 1%",
+                          "padding": "2px 5px",
+                        },
+                        "value": "South Asia",
+                      },
+                      Object {
+                        "label": "Sub-Saharan Africa",
+                        "style": Object {
+                          "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                          "padding": "2px 5px",
+                        },
+                        "value": "Sub-Saharan Africa",
+                      },
+                      Object {
+                        "label": "Latin America & Caribbean",
+                        "style": Object {
+                          "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 0%, rgba(0,0,0,0) 0%",
+                          "padding": "2px 5px",
+                        },
+                        "value": "Latin America & Caribbean",
+                      },
+                    ]
+                  }
+                  pageSize={5}
+                  placeholder="Select [region]"
+                  promptTextCreator={[Function]}
+                  removeSelected={true}
+                  required={false}
+                  rtl={false}
+                  scrollMenuIntoView={true}
+                  searchable={true}
+                  selectComponent={[Function]}
+                  selectWrap={[Function]}
+                  separator={
+                    Array [
+                      ",",
+                      "
+",
+                      "	",
+                    ]
+                  }
+                  shouldKeyDownEventCreateNewOption={[Function]}
+                  simpleValue={false}
+                  tabSelectsValue={true}
+                  trimFilter={true}
+                  value={null}
+                  valueComponent={[Function]}
+                  valueKey="value"
+                >
+                  <div
+                    className="Select is-clearable is-searchable Select--multi"
+                  >
+                    <div
+                      className="Select-control"
+                      onKeyDown={[Function]}
+                      onMouseDown={[Function]}
+                      onTouchEnd={[Function]}
+                      onTouchMove={[Function]}
+                      onTouchStart={[Function]}
+                    >
+                      <span
+                        className="Select-multi-value-wrapper"
+                        id="react-select-2--value"
+                      >
+                        <div
+                          className="Select-placeholder"
+                        >
+                          Select [region]
+                        </div>
+                        <AutosizeInput
+                          aria-activedescendant="react-select-2--value"
+                          aria-expanded="false"
+                          aria-haspopup="false"
+                          aria-owns=""
+                          className="Select-input"
+                          injectStyles={true}
+                          minWidth="5"
+                          onBlur={[Function]}
+                          onChange={[Function]}
+                          onFocus={[Function]}
+                          onPaste={[Function]}
+                          required={false}
+                          role="combobox"
+                          value=""
+                        >
+                          <div
+                            className="Select-input"
+                            style={
+                              Object {
+                                "display": "inline-block",
+                              }
+                            }
+                          >
+                            <input
+                              aria-activedescendant="react-select-2--value"
+                              aria-expanded="false"
+                              aria-haspopup="false"
+                              aria-owns=""
+                              onBlur={[Function]}
+                              onChange={[Function]}
+                              onFocus={[Function]}
+                              onPaste={[Function]}
+                              required={false}
+                              role="combobox"
+                              style={
+                                Object {
+                                  "boxSizing": "content-box",
+                                  "width": "5px",
+                                }
+                              }
+                              value=""
+                            />
+                            <div
+                              style={
+                                Object {
+                                  "height": 0,
+                                  "left": 0,
+                                  "overflow": "scroll",
+                                  "position": "absolute",
+                                  "top": 0,
+                                  "visibility": "hidden",
+                                  "whiteSpace": "pre",
+                                }
+                              }
+                            />
+                          </div>
+                        </AutosizeInput>
+                      </span>
+                      <span
+                        className="Select-arrow-zone"
+                        onMouseDown={[Function]}
+                      >
+                        <span
+                          className="Select-arrow"
+                          onMouseDown={[Function]}
+                        />
+                      </span>
+                    </div>
+                  </div>
+                </Select>
+              </CreatableSelect>
+            </VirtualizedSelect>
+          </OnPasteSelect>
+        </div>
+      </div>
+      <div
+        className="m-b-5 filter-container"
+        key="country_name"
+      >
+        <div
+          className="filter-badge-container"
+        >
+          <FilterBadgeIcon>
+            <svg
+              className="filter-badge "
+              height="20"
+              viewBox="0 0 20 20"
+              width="20"
+            >
+              <path
+                d="M4 5H16V7H4V5ZM6 9H14V11H6V9ZM12 13H8V15H12V13Z"
+              />
+            </svg>
+          </FilterBadgeIcon>
+        </div>
+        <div>
+          <label
+            htmlFor="LABEL-country_name"
+          >
+            country_name
+          </label>
+          <OnPasteSelect
+            clearable={true}
+            key="country_name"
+            labelKey="label"
+            multi={true}
+            noResultsText="No results found"
+            onBlur={[Function]}
+            onChange={[Function]}
+            onClose={[Function]}
+            onFocus={[Function]}
+            onOpen={[Function]}
+            optionRenderer={[Function]}
+            options={
+              Array [
+                Object {
+                  "label": "China",
+                  "style": Object {
+                    "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 62%, rgba(0,0,0,0) 62%",
+                    "padding": "2px 5px",
+                  },
+                  "value": "China",
+                },
+                Object {
+                  "label": "India",
+                  "style": Object {
+                    "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 96%, rgba(0,0,0,0) 96%",
+                    "padding": "2px 5px",
+                  },
+                  "value": "India",
+                },
+                Object {
+                  "label": "Brazil",
+                  "style": Object {
+                    "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 87%, rgba(0,0,0,0) 87%",
+                    "padding": "2px 5px",
+                  },
+                  "value": "Brazil",
+                },
+                Object {
+                  "label": "Nigeria",
+                  "style": Object {
+                    "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                    "padding": "2px 5px",
+                  },
+                  "value": "Nigeria",
+                },
+              ]
+            }
+            placeholder="Select [country_name]"
+            selectComponent={[Function]}
+            selectWrap={[Function]}
+            separator={
+              Array [
+                ",",
+                "
+",
+                "	",
+              ]
+            }
+            value={null}
+            valueKey="value"
+          >
+            <VirtualizedSelect
+              async={false}
+              clearable={true}
+              inputProps={
+                Object {
+                  "onPaste": [Function],
+                }
+              }
+              labelKey="label"
+              maxHeight={200}
+              multi={true}
+              noResultsText="No results found"
+              onBlur={[Function]}
+              onChange={[Function]}
+              onClose={[Function]}
+              onFocus={[Function]}
+              onOpen={[Function]}
+              optionHeight={35}
+              optionRenderer={[Function]}
+              options={
+                Array [
+                  Object {
+                    "label": "China",
+                    "style": Object {
+                      "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 62%, rgba(0,0,0,0) 62%",
+                      "padding": "2px 5px",
+                    },
+                    "value": "China",
+                  },
+                  Object {
+                    "label": "India",
+                    "style": Object {
+                      "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 96%, rgba(0,0,0,0) 96%",
+                      "padding": "2px 5px",
+                    },
+                    "value": "India",
+                  },
+                  Object {
+                    "label": "Brazil",
+                    "style": Object {
+                      "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 87%, rgba(0,0,0,0) 87%",
+                      "padding": "2px 5px",
+                    },
+                    "value": "Brazil",
+                  },
+                  Object {
+                    "label": "Nigeria",
+                    "style": Object {
+                      "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                      "padding": "2px 5px",
+                    },
+                    "value": "Nigeria",
+                  },
+                ]
+              }
+              placeholder="Select [country_name]"
+              selectComponent={[Function]}
+              selectWrap={[Function]}
+              separator={
+                Array [
+                  ",",
+                  "
+",
+                  "	",
+                ]
+              }
+              value={null}
+              valueKey="value"
+            >
+              <CreatableSelect
+                async={false}
+                clearable={true}
+                filterOptions={[Function]}
+                inputProps={
+                  Object {
+                    "onPaste": [Function],
+                  }
+                }
+                isOptionUnique={[Function]}
+                isValidNewOption={[Function]}
+                labelKey="label"
+                maxHeight={200}
+                menuRenderer={[Function]}
+                menuStyle={
+                  Object {
+                    "overflow": "hidden",
+                  }
+                }
+                multi={true}
+                newOptionCreator={[Function]}
+                noResultsText="No results found"
+                onBlur={[Function]}
+                onChange={[Function]}
+                onClose={[Function]}
+                onFocus={[Function]}
+                onOpen={[Function]}
+                optionHeight={35}
+                optionRenderer={[Function]}
+                options={
+                  Array [
+                    Object {
+                      "label": "China",
+                      "style": Object {
+                        "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 62%, rgba(0,0,0,0) 62%",
+                        "padding": "2px 5px",
+                      },
+                      "value": "China",
+                    },
+                    Object {
+                      "label": "India",
+                      "style": Object {
+                        "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 96%, rgba(0,0,0,0) 96%",
+                        "padding": "2px 5px",
+                      },
+                      "value": "India",
+                    },
+                    Object {
+                      "label": "Brazil",
+                      "style": Object {
+                        "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 87%, rgba(0,0,0,0) 87%",
+                        "padding": "2px 5px",
+                      },
+                      "value": "Brazil",
+                    },
+                    Object {
+                      "label": "Nigeria",
+                      "style": Object {
+                        "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                        "padding": "2px 5px",
+                      },
+                      "value": "Nigeria",
+                    },
+                  ]
+                }
+                placeholder="Select [country_name]"
+                promptTextCreator={[Function]}
+                selectComponent={[Function]}
+                selectWrap={[Function]}
+                separator={
+                  Array [
+                    ",",
+                    "
+",
+                    "	",
+                  ]
+                }
+                shouldKeyDownEventCreateNewOption={[Function]}
+                value={null}
+                valueKey="value"
+              >
+                <Select
+                  allowCreate={true}
+                  arrowRenderer={[Function]}
+                  async={false}
+                  autosize={true}
+                  backspaceRemoves={true}
+                  backspaceToRemoveMessage="Press backspace to remove {label}"
+                  clearAllText="Clear all"
+                  clearRenderer={[Function]}
+                  clearValueText="Clear value"
+                  clearable={true}
+                  closeOnSelect={true}
+                  deleteRemoves={true}
+                  delimiter=","
+                  disabled={false}
+                  escapeClearsValue={true}
+                  filterOptions={[Function]}
+                  ignoreAccents={true}
+                  ignoreCase={true}
+                  inputProps={
+                    Object {
+                      "onPaste": [Function],
+                    }
+                  }
+                  isLoading={false}
+                  isOptionUnique={[Function]}
+                  isValidNewOption={[Function]}
+                  joinValues={false}
+                  labelKey="label"
+                  matchPos="any"
+                  matchProp="any"
+                  maxHeight={200}
+                  menuBuffer={0}
+                  menuRenderer={[Function]}
+                  menuStyle={
+                    Object {
+                      "overflow": "hidden",
+                    }
+                  }
+                  multi={true}
+                  newOptionCreator={[Function]}
+                  noResultsText="No results found"
+                  onBlur={[Function]}
+                  onBlurResetsInput={true}
+                  onChange={[Function]}
+                  onClose={[Function]}
+                  onCloseResetsInput={true}
+                  onFocus={[Function]}
+                  onInputChange={[Function]}
+                  onInputKeyDown={[Function]}
+                  onOpen={[Function]}
+                  onSelectResetsInput={true}
+                  openOnClick={true}
+                  optionComponent={[Function]}
+                  optionHeight={35}
+                  optionRenderer={[Function]}
+                  options={
+                    Array [
+                      Object {
+                        "label": "China",
+                        "style": Object {
+                          "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 62%, rgba(0,0,0,0) 62%",
+                          "padding": "2px 5px",
+                        },
+                        "value": "China",
+                      },
+                      Object {
+                        "label": "India",
+                        "style": Object {
+                          "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 96%, rgba(0,0,0,0) 96%",
+                          "padding": "2px 5px",
+                        },
+                        "value": "India",
+                      },
+                      Object {
+                        "label": "Brazil",
+                        "style": Object {
+                          "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 87%, rgba(0,0,0,0) 87%",
+                          "padding": "2px 5px",
+                        },
+                        "value": "Brazil",
+                      },
+                      Object {
+                        "label": "Nigeria",
+                        "style": Object {
+                          "backgroundImage": "linear-gradient(to right, lightgrey, lightgrey 100%, rgba(0,0,0,0) 100%",
+                          "padding": "2px 5px",
+                        },
+                        "value": "Nigeria",
+                      },
+                    ]
+                  }
+                  pageSize={5}
+                  placeholder="Select [country_name]"
+                  promptTextCreator={[Function]}
+                  removeSelected={true}
+                  required={false}
+                  rtl={false}
+                  scrollMenuIntoView={true}
+                  searchable={true}
+                  selectComponent={[Function]}
+                  selectWrap={[Function]}
+                  separator={
+                    Array [
+                      ",",
+                      "
+",
+                      "	",
+                    ]
+                  }
+                  shouldKeyDownEventCreateNewOption={[Function]}
+                  simpleValue={false}
+                  tabSelectsValue={true}
+                  trimFilter={true}
+                  value={null}
+                  valueComponent={[Function]}
+                  valueKey="value"
+                >
+                  <div
+                    className="Select is-clearable is-searchable Select--multi"
+                  >
+                    <div
+                      className="Select-control"
+                      onKeyDown={[Function]}
+                      onMouseDown={[Function]}
+                      onTouchEnd={[Function]}
+                      onTouchMove={[Function]}
+                      onTouchStart={[Function]}
+                    >
+                      <span
+                        className="Select-multi-value-wrapper"
+                        id="react-select-3--value"
+                      >
+                        <div
+                          className="Select-placeholder"
+                        >
+                          Select [country_name]
+                        </div>
+                        <AutosizeInput
+                          aria-activedescendant="react-select-3--value"
+                          aria-expanded="false"
+                          aria-haspopup="false"
+                          aria-owns=""
+                          className="Select-input"
+                          injectStyles={true}
+                          minWidth="5"
+                          onBlur={[Function]}
+                          onChange={[Function]}
+                          onFocus={[Function]}
+                          onPaste={[Function]}
+                          required={false}
+                          role="combobox"
+                          value=""
+                        >
+                          <div
+                            className="Select-input"
+                            style={
+                              Object {
+                                "display": "inline-block",
+                              }
+                            }
+                          >
+                            <input
+                              aria-activedescendant="react-select-3--value"
+                              aria-expanded="false"
+                              aria-haspopup="false"
+                              aria-owns=""
+                              onBlur={[Function]}
+                              onChange={[Function]}
+                              onFocus={[Function]}
+                              onPaste={[Function]}
+                              required={false}
+                              role="combobox"
+                              style={
+                                Object {
+                                  "boxSizing": "content-box",
+                                  "width": "5px",
+                                }
+                              }
+                              value=""
+                            />
+                            <div
+                              style={
+                                Object {
+                                  "height": 0,
+                                  "left": 0,
+                                  "overflow": "scroll",
+                                  "position": "absolute",
+                                  "top": 0,
+                                  "visibility": "hidden",
+                                  "whiteSpace": "pre",
+                                }
+                              }
+                            />
+                          </div>
+                        </AutosizeInput>
+                      </span>
+                      <span
+                        className="Select-arrow-zone"
+                        onMouseDown={[Function]}
+                      >
+                        <span
+                          className="Select-arrow"
+                          onMouseDown={[Function]}
+                        />
+                      </span>
+                    </div>
+                  </div>
+                </Select>
+              </CreatableSelect>
+            </VirtualizedSelect>
+          </OnPasteSelect>
+        </div>
+      </div>
+    </div>
+  </div>
+</FilterBox>
+`;
