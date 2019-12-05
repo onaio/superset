@@ -268,6 +268,19 @@ class CoreTests(SupersetTestCase):
         assert len(resp) > 0
         assert "Carbon Dioxide" in resp
 
+    def test_cascading_filters(self):
+        self.login(username="admin")
+        db.session.commit()
+        table_id = self.table_ids.get("wb_health_population")
+        form_data = {"filters": [{"col": "region", "op": "in", "val": ["South Asia"]}]}
+        url = "/superset/filter/table/{}/{}?form_data={}".format(
+            table_id, "country_name", json.dumps(form_data)
+        )
+        response = json.loads(self.get_resp(url))
+        assert "Bangladesh" in response
+        assert "India" in response
+        assert "Brazil" not in response
+
     def test_slice_data(self):
         # slice data should have some required attributes
         self.login(username="admin")
