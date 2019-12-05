@@ -91,7 +91,9 @@ def get_viz(
         return viz_obj
 
 
-def get_form_data(slice_id=None, use_slice_data=False):
+def get_form_data(
+    slice_id: Optional[int] = None, use_slice_data: Optional[bool] = False
+) -> Tuple[dict, Optional[object]]:
     form_data = {}
     post_data = request.form.get("form_data")
     request_args_data = request.args.get("form_data")
@@ -131,8 +133,27 @@ def get_form_data(slice_id=None, use_slice_data=False):
         slc = db.session.query(models.Slice).filter_by(id=slice_id).one_or_none()
         if slc:
             slice_form_data = slc.form_data.copy()
+            # we want to get adhoc_filters from both form_data and slice_form_data
+            adhoc_filters = form_data.get("adhoc_filters", []) + slice_form_data.get(
+                "adhoc_filters", []
+            )
             slice_form_data.update(form_data)
             form_data = slice_form_data
+            # ensure adhoc_filters are unique
+            seen_filters = []
+            unique_list_of_filters = []
+            # we are not checking these fields because they do not make
+            # an adhoc filter unique, i.e. two adhoc filters with different
+            # values for these fields and similar values for the rest of their
+            # fields are the same.
+            dont_check = ["fromFormData", "filterOptionName"]
+            for item in adhoc_filters:
+                values = [item[k] for k in item.keys() if k not in dont_check]
+                if values not in seen_filters:
+                    unique_list_of_filters.append(item)
+                seen_filters.append(values)
+
+            form_data["adhoc_filters"] = unique_list_of_filters
 
     update_time_range(form_data)
 
