@@ -1,6 +1,7 @@
 import React from 'react';
 import { shallow, mount } from 'enzyme';
 import toJson from 'enzyme-to-json';
+import OnPasteSelect from '../../../src/components/OnPasteSelect';
 import FilterBox from '../../../src/visualizations/FilterBox/FilterBox';
 
 const defaultProps = {
@@ -49,7 +50,8 @@ const defaultProps = {
     {"asc":false,"clearable":true,"column":"region","key":"region","metric":"sum__SP_POP_TOTL","multiple":true,"label":"region"},
     {"asc":false,"clearable":true,"column":"country_name","key":"country_name","metric":"sum__SP_POP_TOTL","multiple":true,"label":"country_name"}
   ],
-  chartId: 12
+  chartId: 12,
+  showDateFilter: false,
 };
 
 
@@ -66,5 +68,30 @@ describe('FilterBox', () => {
     );
     expect(toJson(wrapper)).toMatchSnapshot();
     wrapper.unmount();
-  })
+  });
+
+  it('shows selected filters and cascading filter values in FilterBox', () => {
+    const wrapper = mount(
+      <FilterBox { ...defaultProps }/>
+    );
+    wrapper.setState({
+      selectedValues: {
+        region: ['South Asia'],
+        country_name: ['China']
+      },
+      cascadingFilterChoices: {
+        region: ['South Asia'],
+        country_name: ['China']
+      }
+    });
+
+    wrapper.find(OnPasteSelect).forEach((node, i) => {
+      if (i === 0) {
+        expect(node.props().value).toEqual(wrapper.state().selectedValues.region);
+      } else {
+        expect(node.props().value).toEqual(wrapper.state().selectedValues.country_name);
+      }
+    });
+    wrapper.unmount();
+  });
 })
