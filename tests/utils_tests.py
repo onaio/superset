@@ -210,7 +210,22 @@ class UtilsTestCase(SupersetTestCase):
         request_mock.args = request_args_data
         with patch("superset.views.utils.request", request_mock):
             form_data, _ = get_form_data()
-            self.assertEqual(form_data, json.loads(request_args_data.get("form_data")))
+            self.assertEqual(
+                form_data.get("adhoc_filters"),
+                json.loads(request_args_data.get("form_data")).get("adhoc_filters"),
+            )
+
+        # when SIP_15_ENABLED is set to true in app config,
+        # a time_range_endpoints fields is added to form_data
+        # with the value  equal to:
+        # get_time_range_endpoints(form_data, slc, slice_id)
+        with patch("superset.views.utils.request", request_mock):
+            app.config["SIP_15_ENABLED"] = True
+            form_data, _ = get_form_data(slice_id=slc.id)
+            self.assertEqual(
+                form_data.get("time_range_endpoints"),
+                get_time_range_endpoints(form_data, slc, slc.id),
+            )
 
     def test_json_int_dttm_ser(self):
         dttm = datetime(2020, 1, 1)
