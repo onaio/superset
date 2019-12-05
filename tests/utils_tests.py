@@ -14,12 +14,11 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-import unittest
+import json
 import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from unittest.mock import Mock, patch
-import json
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy
 from flask import Flask
@@ -53,7 +52,7 @@ from superset.utils.core import (
     zlib_compress,
     zlib_decompress,
 )
-from superset.views.utils import get_time_range_endpoints, get_form_data
+from superset.views.utils import get_form_data, get_time_range_endpoints
 from tests.base_tests import SupersetTestCase
 
 
@@ -98,7 +97,8 @@ def mock_to_adhoc(filt, expressionType="SIMPLE", clause="where"):
 class UtilsTestCase(SupersetTestCase):
     def test_get_form_data(self):
         # do not overwrite existing adhoc_filters on slice
-        request_form_data = {'form_data': '''{
+        request_form_data = {
+            "form_data": """{
             "adhoc_filters": [
                 {
                     "clause": "WHERE",
@@ -106,8 +106,14 @@ class UtilsTestCase(SupersetTestCase):
                     "expressionType": "SIMPLE",
                     "operator": "in",
                     "subject": "a"
-                },
-                {
+                },{
+                    "clause": "WHERE",
+                    "comparator": "someval",
+                    "expressionType": "SIMPLE",
+                    "operator": "in",
+                    "subject": "a",
+                    "filterOptionName": "2745eae5"
+                },{
                     "clause": "WHERE",
                     "comparator": ["c1", "c2"],
                     "expressionType": "SIMPLE",
@@ -115,30 +121,82 @@ class UtilsTestCase(SupersetTestCase):
                     "subject": "B"
                 }
             ]
-        }'''}
-        request_mock = unittest.mock.MagicMock()
-        request_mock.form = request_form_data
-        request_mock.args = {}
-        with unittest.mock.patch("superset.views.utils.request", request_mock):
-            form_data, _ = get_form_data()
-            self.assertEqual(form_data, json.loads(request_form_data.get('form_data')))
+        }"""
+        }
 
-        # request params overwrite post body
-        request_args_data = {'form_data': '''{
+        request_args_data = {
+            "form_data": """{
             "adhoc_filters": [
                 {
-                    "clause": "WHEREGUN",
+                    "clause": "WHERE",
                     "comparator": "someval",
                     "expressionType": "SIMPLE",
                     "operator": "in",
                     "subject": "a"
                 }
             ]
-        }'''}
+        }"""
+        }
+
+        expected_form_data = {
+            "form_data": """{
+            "adhoc_filters": [
+                {
+                    "clause": "WHERE",
+                    "comparator": "someval",
+                    "expressionType": "SIMPLE",
+                    "operator": "in",
+                    "subject": "a"
+                },{
+                    "clause": "WHERE",
+                    "comparator": ["c1", "c2"],
+                    "expressionType": "SIMPLE",
+                    "operator": "==",
+                    "subject": "B"
+                },{
+                        "clause": "WHERE",
+                        "expressionType": "SIMPLE",
+                        "filterOptionName": "2745eae5",
+                        "comparator": [
+                            "TCA",
+                            "MNP",
+                            "DMA",
+                            "MHL",
+                            "MCO",
+                            "SXM",
+                            "CYM",
+                            "TUV",
+                            "IMY",
+                            "KNA",
+                            "ASM",
+                            "ADO",
+                            "AMA",
+                            "PLW"
+                        ],
+                        "operator": "not in",
+                        "subject": "country_code"
+                    }
+            ]
+        }"""
+        }
+        request_mock = MagicMock()
+        request_mock.form = request_form_data
+        request_mock.args = {}
+
+        slc = self.get_slice("Life Expectancy VS Rural %", db.session)
+
+        with patch("superset.views.utils.request", request_mock):
+            form_data, _ = get_form_data(slice_id=slc.id)
+            self.assertEqual(
+                form_data.get("adhoc_filters"),
+                json.loads(expected_form_data.get("form_data")).get("adhoc_filters"),
+            )
+
+        # request params overwrite post body
         request_mock.args = request_args_data
-        with unittest.mock.patch("superset.views.utils.request", request_mock):
+        with patch("superset.views.utils.request", request_mock):
             form_data, _ = get_form_data()
-            self.assertEqual(form_data, json.loads(request_args_data.get('form_data')))
+            self.assertEqual(form_data, json.loads(request_args_data.get("form_data")))
 
     def test_json_int_dttm_ser(self):
         dttm = datetime(2020, 1, 1)
