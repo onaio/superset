@@ -119,6 +119,20 @@ class UtilsTestCase(SupersetTestCase):
                     "expressionType": "SIMPLE",
                     "operator": "==",
                     "subject": "B"
+                },{
+                    "clause": "WHERE",
+                    "comparator": ["c1", "c2"],
+                    "expressionType": "SIMPLE",
+                    "operator": "==",
+                    "subject": "B",
+                    "fromFormData": "test-value"
+                },{
+                    "clause": "WHERE",
+                    "comparator": ["c1", "c2"],
+                    "expressionType": "SIMPLE",
+                    "operator": "==",
+                    "subject": "B",
+                    "fromFormData": "test-value"
                 }
             ]
         }"""

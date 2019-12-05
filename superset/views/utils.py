@@ -142,6 +142,10 @@ def get_form_data(
             # ensure adhoc_filters are unique
             seen_filters = []
             unique_list_of_filters = []
+            # we are not checking these fields because they do not make
+            # an adhoc filter unique, i.e. two adhoc filters with different
+            # values for these fields and similar values for the rest of their
+            # fields are the same.
             dont_check = ["fromFormData", "filterOptionName"]
             for item in adhoc_filters:
                 values = [item[k] for k in item.keys() if k not in dont_check]
