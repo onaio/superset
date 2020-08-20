@@ -17,9 +17,11 @@
  * under the License.
  */
 import React from 'react';
-import { mount } from 'enzyme';
+import { mount, shallow } from 'enzyme';
 
-import RefreshIntervalModal from '../../../../src/dashboard/components/RefreshIntervalModal';
+import ModalTrigger from 'src/components/ModalTrigger';
+import RefreshIntervalModal from 'src/dashboard/components/RefreshIntervalModal';
+import { Alert } from 'react-bootstrap';
 
 describe('RefreshIntervalModal', () => {
   const mockedProps = {
@@ -35,7 +37,7 @@ describe('RefreshIntervalModal', () => {
   });
   it('renders the trigger node', () => {
     const wrapper = mount(<RefreshIntervalModal {...mockedProps} />);
-    expect(wrapper.find('.fa-edit')).toHaveLength(1);
+    expect(wrapper.find('.fa-edit')).toExist();
   });
   it('should render a interval seconds', () => {
     const wrapper = mount(<RefreshIntervalModal {...mockedProps} />);
@@ -44,7 +46,22 @@ describe('RefreshIntervalModal', () => {
   it('should change refreshFrequency with edit mode', () => {
     const wrapper = mount(<RefreshIntervalModal {...mockedProps} />);
     wrapper.instance().handleFrequencyChange({ value: 30 });
+    wrapper.instance().onSave();
     expect(mockedProps.onChange).toHaveBeenCalled();
     expect(mockedProps.onChange).toHaveBeenCalledWith(30, mockedProps.editMode);
+  });
+  it('should show warning message', () => {
+    const props = {
+      ...mockedProps,
+      refreshLimit: 3600,
+      refreshWarning: 'Show warning',
+    };
+
+    const wrapper = shallow(<RefreshIntervalModal {...props} />);
+    wrapper.instance().handleFrequencyChange({ value: 30 });
+    expect(wrapper.find(ModalTrigger).dive().find(Alert)).toExist();
+
+    wrapper.instance().handleFrequencyChange({ value: 3601 });
+    expect(wrapper.find(ModalTrigger).dive().find(Alert)).not.toExist();
   });
 });

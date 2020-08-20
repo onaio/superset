@@ -19,8 +19,9 @@
 import React from 'react';
 import { shallow, mount } from 'enzyme';
 import { Nav } from 'react-bootstrap';
+import { supersetTheme, ThemeProvider } from '@superset-ui/style';
 
-import Menu from '../../../src/components/Menu/Menu';
+import Menu from 'src/components/Menu/Menu';
 
 const defaultProps = {
   data: {
@@ -73,8 +74,9 @@ const defaultProps = {
     ],
     brand: {
       path: '/superset/profile/admin/',
-      icon: '/static/assets/images/superset-logo@2x.png',
+      icon: '/static/assets/images/superset-logo-horiz.png',
       alt: 'Superset',
+      width: '126',
     },
     navbar_right: {
       bug_report_url: null,
@@ -117,7 +119,7 @@ describe('Menu', () => {
   });
 
   it('renders the brand', () => {
-    expect(wrapper.find('.navbar-brand')).toHaveLength(1);
+    expect(wrapper.find('.navbar-brand')).toExist();
   });
 
   it('renders 2 navs', () => {
@@ -155,7 +157,10 @@ describe('Menu', () => {
       ...overrideProps,
     };
 
-    const versionedWrapper = mount(<Menu {...props} />);
+    const versionedWrapper = mount(<Menu {...props} />, {
+      wrappingComponent: ThemeProvider,
+      wrappingComponentProps: { theme: supersetTheme },
+    });
 
     expect(versionedWrapper.find('.version-info div')).toHaveLength(2);
   });

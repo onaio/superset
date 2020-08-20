@@ -68,6 +68,7 @@ export const slicePropShape = PropTypes.shape({
   viz_type: PropTypes.string.isRequired,
   description: PropTypes.string,
   description_markeddown: PropTypes.string,
+  owners: PropTypes.arrayOf(PropTypes.string).isRequired,
 });
 
 export const filterIndicatorPropShape = PropTypes.shape({
@@ -101,7 +102,6 @@ export const dashboardStatePropShape = PropTypes.shape({
   expandedSlices: PropTypes.object,
   editMode: PropTypes.bool,
   isPublished: PropTypes.bool.isRequired,
-  builderPaneType: PropTypes.string.isRequired,
   colorNamespace: PropTypes.string,
   colorScheme: PropTypes.string,
   updatedColorScheme: PropTypes.bool,

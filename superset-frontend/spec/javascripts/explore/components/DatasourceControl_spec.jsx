@@ -20,9 +20,10 @@ import React from 'react';
 import sinon from 'sinon';
 import configureStore from 'redux-mock-store';
 import { shallow } from 'enzyme';
-import DatasourceModal from '../../../../src/datasource/DatasourceModal';
-import ChangeDatasourceModal from '../../../../src/datasource/ChangeDatasourceModal';
-import DatasourceControl from '../../../../src/explore/components/controls/DatasourceControl';
+import { MenuItem } from 'react-bootstrap';
+import DatasourceModal from 'src/datasource/DatasourceModal';
+import ChangeDatasourceModal from 'src/datasource/ChangeDatasourceModal';
+import DatasourceControl from 'src/explore/components/controls/DatasourceControl';
 
 const defaultProps = {
   name: 'datasource',
@@ -40,25 +41,48 @@ const defaultProps = {
       name: 'main',
     },
   },
+  actions: {
+    setDatasource: sinon.spy(),
+  },
   onChange: sinon.spy(),
 };
 
 describe('DatasourceControl', () => {
-  function setup() {
+  function setup(overrideProps) {
     const mockStore = configureStore([]);
     const store = mockStore({});
-    return shallow(<DatasourceControl {...defaultProps} />, {
+    const props = {
+      ...defaultProps,
+      ...overrideProps,
+    };
+    return shallow(<DatasourceControl {...props} />, {
       context: { store },
     });
   }
 
   it('renders a Modal', () => {
     const wrapper = setup();
-    expect(wrapper.find(DatasourceModal)).toHaveLength(1);
+    expect(wrapper.find(DatasourceModal)).toExist();
   });
 
   it('renders a ChangeDatasourceModal', () => {
     const wrapper = setup();
-    expect(wrapper.find(ChangeDatasourceModal)).toHaveLength(1);
+    expect(wrapper.find(ChangeDatasourceModal)).toExist();
+  });
+
+  it('show or hide Edit Datasource option', () => {
+    let wrapper = setup();
+    expect(wrapper.find('#datasource_menu')).toExist();
+    expect(wrapper.find('#datasource_menu').dive().find(MenuItem)).toHaveLength(
+      3,
+    );
+
+    wrapper = setup({
+      isEditable: false,
+    });
+    expect(wrapper.find('#datasource_menu')).toExist();
+    expect(wrapper.find('#datasource_menu').dive().find(MenuItem)).toHaveLength(
+      2,
+    );
   });
 });

@@ -39,11 +39,6 @@ body {
   padding: 0px;
 }
 
-.loading {
-  width: 50px;
-  margin-top: 15px;
-}
-
 .pane-cell {
   padding: 10px;
   overflow: auto;
@@ -158,6 +153,7 @@ div.Workspace {
 
       &:last-child {
         margin-right: 0;
+        font-feature-settings: 'kern' 1, 'tnum' 1;
       }
     }
   }
@@ -181,11 +177,9 @@ div.Workspace {
 
   display: inline-block;
   background-color: @gray-light;
-  line-height: 8px; // set specifically for closing 'x'
   text-align: center;
   vertical-align: middle;
   font-size: @font-size-m;
-  margin-top: -3px;
   font-weight: @font-weight-bold;
 }
 
@@ -258,11 +252,54 @@ div.Workspace {
 
   .ddbtn-tab {
     font-size: inherit;
-    font-weight: @font-weight-bold;
+    color: black;
 
     &:active {
       background: none;
     }
+
+    svg {
+      vertical-align: middle;
+    }
+  }
+
+  .dropdown.btn-group.btn-group-sm {
+    width: 3px;
+    height: 3px;
+    border-radius: 1.5px;
+    background: #bababa;
+    margin-right: 8px;
+    font-weight: @font-weight-normal;
+    display: inline-flex;
+
+    &:hover {
+      background-color: @primary-color;
+
+      &:before,
+      &:after {
+        background-color: @primary-color;
+      }
+    }
+
+    &:before,
+    &:after {
+      position: absolute;
+      content: ' ';
+      width: 3px;
+      height: 3px;
+      border-radius: 1.5px;
+      background-color: #bababa;
+    }
+    &:before {
+      transform: translateY(-5px);
+    }
+    &:after {
+      transform: translateY(5px);
+    }
+  }
+
+  ul.dropdown-menu {
+    margin-top: 10px;
   }
 
   .dropdown-toggle {
@@ -372,6 +409,10 @@ div.tablePopover {
   padding-right: 8px;
 }
 
+.result-set-error-message {
+  padding-top: 16px;
+}
+
 .filterable-table-container {
   margin-top: 48px;
 }
@@ -380,19 +421,23 @@ div.tablePopover {
   border: 1px solid @gray-light;
   font-feature-settings: @font-feature-settings;
   font-family: @font-family-monospace;
+
+  &.ace_autocomplete {
+    width: 520px;
+  }
 }
 
-.Select-menu-outer {
+.Select__menu-outer {
   min-width: 100%;
   width: inherit;
   z-index: @z-index-dropdown;
 }
 
-.Select-clear {
+.Select__clear-indicator {
   margin-top: -2px;
 }
 
-.Select-arrow {
+.Select__arrow {
   margin-top: 5px;
 }
 
@@ -466,6 +511,8 @@ a.Link {
   padding: 0;
   border: none;
   background: none;
+  position: relative;
+  top: 2px;
 
   &:focus {
     outline: 0;

@@ -19,7 +19,7 @@
 import React from 'react';
 import { mount } from 'enzyme';
 
-import CssEditor from '../../../../src/dashboard/components/CssEditor';
+import CssEditor from 'src/dashboard/components/CssEditor';
 
 describe('CssEditor', () => {
   const mockedProps = {
@@ -30,6 +30,6 @@ describe('CssEditor', () => {
   });
   it('renders the trigger node', () => {
     const wrapper = mount(<CssEditor {...mockedProps} />);
-    expect(wrapper.find('.fa-edit')).toHaveLength(1);
+    expect(wrapper.find('.fa-edit')).toExist();
   });
 });

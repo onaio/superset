@@ -16,7 +16,6 @@
 # under the License.
 # from superset import db
 # from superset.models.dashboard import Dashboard
-import subprocess
 import urllib.request
 from unittest import skipUnless
 from unittest.mock import patch
@@ -25,70 +24,23 @@ from flask_testing import LiveServerTestCase
 from sqlalchemy.sql import func
 
 from superset import db, is_feature_enabled, security_manager, thumbnail_cache
+from superset.extensions import machine_auth_provider_factory
 from superset.models.dashboard import Dashboard
 from superset.models.slice import Slice
-from superset.utils.screenshots import (
-    ChartScreenshot,
-    DashboardScreenshot,
-    get_auth_cookies,
-)
+from superset.utils.screenshots import ChartScreenshot, DashboardScreenshot
+from superset.utils.urls import get_url_path
 from tests.test_app import app
 
 from .base_tests import SupersetTestCase
 
 
-class CeleryStartMixin:
-    @classmethod
-    def setUpClass(cls):
-        with app.app_context():
-            from werkzeug.contrib.cache import RedisCache
-
-            class CeleryConfig(object):
-                BROKER_URL = "redis://localhost"
-                CELERY_IMPORTS = ("superset.tasks.thumbnails",)
-                CONCURRENCY = 1
-
-            app.config["CELERY_CONFIG"] = CeleryConfig
-
-            def init_thumbnail_cache(app) -> RedisCache:
-                return RedisCache(
-                    host="localhost",
-                    key_prefix="superset_thumbnails_",
-                    default_timeout=10000,
-                )
-
-            app.config["THUMBNAIL_CACHE_CONFIG"] = init_thumbnail_cache
-
-            base_dir = app.config["BASE_DIR"]
-            worker_command = base_dir + "/bin/superset worker -w 2"
-            subprocess.Popen(
-                worker_command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-
-    @classmethod
-    def tearDownClass(cls):
-        subprocess.call(
-            "ps auxww | grep 'celeryd' | awk '{print $2}' | xargs kill -9", shell=True
-        )
-        subprocess.call(
-            "ps auxww | grep 'superset worker' | awk '{print $2}' | xargs kill -9",
-            shell=True,
-        )
-
-
-class ThumbnailsSeleniumLive(CeleryStartMixin, LiveServerTestCase):
+class TestThumbnailsSeleniumLive(LiveServerTestCase):
     def create_app(self):
         return app
 
     def url_open_auth(self, username: str, url: str):
         admin_user = security_manager.find_user(username=username)
-        cookies = {}
-        for cookie in get_auth_cookies(admin_user):
-            cookies["session"] = cookie
-
+        cookies = machine_auth_provider_factory.instance.get_auth_cookies(admin_user)
         opener = urllib.request.build_opener()
         opener.addheaders.append(("Cookie", f"session={cookies['session']}"))
         return opener.open(f"{self.get_server_url()}/{url}")
@@ -107,7 +59,7 @@ class ThumbnailsSeleniumLive(CeleryStartMixin, LiveServerTestCase):
             self.assertEqual(response.getcode(), 202)
 
 
-class ThumbnailsTests(CeleryStartMixin, SupersetTestCase):
+class TestThumbnails(SupersetTestCase):
 
     mock_image = b"bytes mock image"
 
@@ -204,8 +156,9 @@ class ThumbnailsTests(CeleryStartMixin, SupersetTestCase):
             Thumbnails: Simple get chart with wrong digest
         """
         chart = db.session.query(Slice).all()[0]
+        chart_url = get_url_path("Superset.slice", slice_id=chart.id, standalone="true")
         # Cache a test "image"
-        screenshot = ChartScreenshot(model_id=chart.id)
+        screenshot = ChartScreenshot(chart_url, chart.digest)
         thumbnail_cache.set(screenshot.cache_key, self.mock_image)
         self.login(username="admin")
         uri = f"api/v1/chart/{chart.id}/thumbnail/1234/"
@@ -219,8 +172,9 @@ class ThumbnailsTests(CeleryStartMixin, SupersetTestCase):
             Thumbnails: Simple get cached dashboard screenshot
         """
         dashboard = db.session.query(Dashboard).all()[0]
+        dashboard_url = get_url_path("Superset.dashboard", dashboard_id=dashboard.id)
         # Cache a test "image"
-        screenshot = DashboardScreenshot(model_id=dashboard.id)
+        screenshot = DashboardScreenshot(dashboard_url, dashboard.digest)
         thumbnail_cache.set(screenshot.cache_key, self.mock_image)
         self.login(username="admin")
         uri = f"api/v1/dashboard/{dashboard.id}/thumbnail/{dashboard.digest}/"
@@ -234,8 +188,9 @@ class ThumbnailsTests(CeleryStartMixin, SupersetTestCase):
             Thumbnails: Simple get cached chart screenshot
         """
         chart = db.session.query(Slice).all()[0]
+        chart_url = get_url_path("Superset.slice", slice_id=chart.id, standalone="true")
         # Cache a test "image"
-        screenshot = ChartScreenshot(model_id=chart.id)
+        screenshot = ChartScreenshot(chart_url, chart.digest)
         thumbnail_cache.set(screenshot.cache_key, self.mock_image)
         self.login(username="admin")
         uri = f"api/v1/chart/{chart.id}/thumbnail/{chart.digest}/"
@@ -249,8 +204,9 @@ class ThumbnailsTests(CeleryStartMixin, SupersetTestCase):
             Thumbnails: Simple get dashboard with wrong digest
         """
         dashboard = db.session.query(Dashboard).all()[0]
+        dashboard_url = get_url_path("Superset.dashboard", dashboard_id=dashboard.id)
         # Cache a test "image"
-        screenshot = DashboardScreenshot(model_id=dashboard.id)
+        screenshot = DashboardScreenshot(dashboard_url, dashboard.digest)
         thumbnail_cache.set(screenshot.cache_key, self.mock_image)
         self.login(username="admin")
         uri = f"api/v1/dashboard/{dashboard.id}/thumbnail/1234/"

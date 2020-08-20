@@ -21,7 +21,7 @@ import configureStore from 'redux-mock-store';
 import { shallow } from 'enzyme';
 
 import { OverlayTrigger } from 'react-bootstrap';
-import URLShortLinkButton from '../../../src/components/URLShortLinkButton';
+import URLShortLinkButton from 'src/components/URLShortLinkButton';
 
 describe('URLShortLinkButton', () => {
   const defaultProps = {
@@ -40,6 +40,6 @@ describe('URLShortLinkButton', () => {
 
   it('renders OverlayTrigger', () => {
     const wrapper = setup();
-    expect(wrapper.find(OverlayTrigger)).toHaveLength(1);
+    expect(wrapper.find(OverlayTrigger)).toExist();
   });
 });

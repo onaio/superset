@@ -15,15 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, cast, Dict, List, Optional, Tuple, Union
 
+import geohash as geohash_lib
 import numpy as np
 from flask_babel import gettext as _
-from pandas import DataFrame, NamedAgg
+from geopy.point import Point
+from pandas import DataFrame, NamedAgg, Series
 
 from superset.exceptions import QueryObjectValidationError
+from superset.utils.core import DTTM_ALIAS, PostProcessingContributionOrientation
 
-WHITELIST_NUMPY_FUNCTIONS = (
+ALLOWLIST_NUMPY_FUNCTIONS = (
     "average",
     "argmin",
     "argmax",
@@ -46,7 +49,7 @@ WHITELIST_NUMPY_FUNCTIONS = (
     "var",
 )
 
-WHITELIST_ROLLING_FUNCTIONS = (
+DENYLIST_ROLLING_FUNCTIONS = (
     "count",
     "corr",
     "cov",
@@ -62,21 +65,65 @@ WHITELIST_ROLLING_FUNCTIONS = (
     "quantile",
 )
 
-WHITELIST_CUMULATIVE_FUNCTIONS = (
+ALLOWLIST_CUMULATIVE_FUNCTIONS = (
     "cummax",
     "cummin",
     "cumprod",
     "cumsum",
 )
 
+PROPHET_TIME_GRAIN_MAP = {
+    "PT1S": "S",
+    "PT1M": "min",
+    "PT5M": "5min",
+    "PT10M": "10min",
+    "PT15M": "15min",
+    "PT0.5H": "30min",
+    "PT1H": "H",
+    "P1D": "D",
+    "P1W": "W",
+    "P1M": "M",
+    "P0.25Y": "Q",
+    "P1Y": "A",
+    "1969-12-28T00:00:00Z/P1W": "W",
+    "1969-12-29T00:00:00Z/P1W": "W",
+    "P1W/1970-01-03T00:00:00Z": "W",
+    "P1W/1970-01-04T00:00:00Z": "W",
+}
 
-def validate_column_args(*argnames: str) -> Callable:
-    def wrapper(func):
-        def wrapped(df, **options):
+
+def _flatten_column_after_pivot(
+    column: Union[str, Tuple[str, ...]], aggregates: Dict[str, Dict[str, Any]]
+) -> str:
+    """
+    Function for flattening column names into a single string. This step is necessary
+    to be able to properly serialize a DataFrame. If the column is a string, return
+    element unchanged. For multi-element columns, join column elements with a comma,
+    with the exception of pivots made with a single aggregate, in which case the
+    aggregate column name is omitted.
+
+    :param column: single element from `DataFrame.columns`
+    :param aggregates: aggregates
+    :return:
+    """
+    if isinstance(column, str):
+        return column
+    if len(column) == 1:
+        return column[0]
+    if len(aggregates) == 1 and len(column) > 1:
+        # drop aggregate for single aggregate pivots with multiple groupings
+        # from column name (aggregates always come first in column name)
+        column = column[1:]
+    return ", ".join(column)
+
+
+def validate_column_args(*argnames: str) -> Callable[..., Any]:
+    def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapped(df: DataFrame, **options: Any) -> Any:
             columns = df.columns.tolist()
             for name in argnames:
                 if name in options and not all(
-                    elem in columns for elem in options[name]
+                    elem in columns for elem in options.get(name) or []
                 ):
                     raise QueryObjectValidationError(
                         _("Referenced columns not available in DataFrame.")
@@ -114,7 +161,7 @@ def _get_aggregate_funcs(
                 _("Operator undefined for aggregator: %(name)s", name=name,)
             )
         operator = agg_obj["operator"]
-        if operator not in WHITELIST_NUMPY_FUNCTIONS or not hasattr(np, operator):
+        if operator not in ALLOWLIST_NUMPY_FUNCTIONS or not hasattr(np, operator):
             raise QueryObjectValidationError(
                 _("Invalid numpy function: %(operator)s", operator=operator,)
             )
@@ -144,10 +191,7 @@ def _append_columns(
     :return: new DataFrame with combined data from `base_df` and `append_df`
     """
     return base_df.assign(
-        **{
-            target: append_df[append_df.columns[idx]]
-            for idx, target in enumerate(columns.values())
-        }
+        **{target: append_df[source] for source, target in columns.items()}
     )
 
 
@@ -155,14 +199,15 @@ def _append_columns(
 def pivot(  # pylint: disable=too-many-arguments
     df: DataFrame,
     index: List[str],
-    columns: List[str],
     aggregates: Dict[str, Dict[str, Any]],
+    columns: Optional[List[str]] = None,
     metric_fill_value: Optional[Any] = None,
     column_fill_value: Optional[str] = None,
     drop_missing_columns: Optional[bool] = True,
-    combine_value_with_metric=False,
+    combine_value_with_metric: bool = False,
     marginal_distributions: Optional[bool] = None,
     marginal_distribution_name: Optional[str] = None,
+    flatten_columns: bool = True,
 ) -> DataFrame:
     """
     Perform a pivot operation on a DataFrame.
@@ -180,16 +225,13 @@ def pivot(  # pylint: disable=too-many-arguments
     :param marginal_distributions: Add totals for row/column. Default to False
     :param marginal_distribution_name: Name of row/column with marginal distribution.
            Default to 'All'.
+    :param flatten_columns: Convert column names to strings
     :return: A pivot table
     :raises ChartDataValidationError: If the request in incorrect
     """
     if not index:
         raise QueryObjectValidationError(
             _("Pivot operation requires at least one index")
-        )
-    if not columns:
-        raise QueryObjectValidationError(
-            _("Pivot operation requires at least one column")
         )
     if not aggregates:
         raise QueryObjectValidationError(
@@ -219,6 +261,13 @@ def pivot(  # pylint: disable=too-many-arguments
     if combine_value_with_metric:
         df = df.stack(0).unstack()
 
+    # Make index regular column
+    if flatten_columns:
+        df.columns = [
+            _flatten_column_after_pivot(col, aggregates) for col in df.columns
+        ]
+    # return index as regular column
+    df.reset_index(level=0, inplace=True)
     return df
 
 
@@ -301,7 +350,7 @@ def rolling(  # pylint: disable=too-many-arguments
         kwargs["win_type"] = win_type
 
     df_rolling = df_rolling.rolling(**kwargs)
-    if rolling_type not in WHITELIST_ROLLING_FUNCTIONS or not hasattr(
+    if rolling_type not in DENYLIST_ROLLING_FUNCTIONS or not hasattr(
         df_rolling, rolling_type
     ):
         raise QueryObjectValidationError(
@@ -323,9 +372,12 @@ def rolling(  # pylint: disable=too-many-arguments
     return df
 
 
-@validate_column_args("columns", "rename")
+@validate_column_args("columns", "drop", "rename")
 def select(
-    df: DataFrame, columns: List[str], rename: Optional[Dict[str, str]] = None
+    df: DataFrame,
+    columns: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+    rename: Optional[Dict[str, str]] = None,
 ) -> DataFrame:
     """
     Only select a subset of columns in the original dataset. Can be useful for
@@ -333,15 +385,21 @@ def select(
 
     :param df: DataFrame on which the rolling period will be based.
     :param columns: Columns which to select from the DataFrame, in the desired order.
-                    If columns are renamed, the old column name should be referenced
-                    here.
+                    If left undefined, all columns will be selected. If columns are
+                    renamed, the original column name should be referenced here.
+    :param exclude: columns to exclude from selection. If columns are renamed, the new
+                    column name should be referenced here.
     :param rename: columns which to rename, mapping source column to target column.
                    For instance, `{'y': 'y2'}` will rename the column `y` to
                    `y2`.
     :return: Subset of columns in original DataFrame
     :raises ChartDataValidationError: If the request in incorrect
     """
-    df_select = df[columns]
+    df_select = df.copy(deep=False)
+    if columns:
+        df_select = df_select[columns]
+    if exclude:
+        df_select = df_select.drop(exclude, axis=1)
     if rename is not None:
         df_select = df_select.rename(columns=rename)
     return df_select
@@ -350,6 +408,7 @@ def select(
 @validate_column_args("columns")
 def diff(df: DataFrame, columns: Dict[str, str], periods: int = 1,) -> DataFrame:
     """
+    Calculate row-by-row difference for select columns.
 
     :param df: DataFrame on which the diff will be based.
     :param columns: columns on which to perform diff, mapping source column to
@@ -369,6 +428,7 @@ def diff(df: DataFrame, columns: Dict[str, str], periods: int = 1,) -> DataFrame
 @validate_column_args("columns")
 def cum(df: DataFrame, columns: Dict[str, str], operator: str) -> DataFrame:
     """
+    Calculate cumulative sum/product/min/max for select columns.
 
     :param df: DataFrame on which the cumulative operation will be based.
     :param columns: columns on which to perform a cumulative operation, mapping source
@@ -377,14 +437,252 @@ def cum(df: DataFrame, columns: Dict[str, str], operator: str) -> DataFrame:
            `y2` based on cumulative values calculated from `y`, leaving the original
            column `y` unchanged.
     :param operator: cumulative operator, e.g. `sum`, `prod`, `min`, `max`
-    :return:
+    :return: DataFrame with cumulated columns
     """
     df_cum = df[columns.keys()]
     operation = "cum" + operator
-    if operation not in WHITELIST_CUMULATIVE_FUNCTIONS or not hasattr(
+    if operation not in ALLOWLIST_CUMULATIVE_FUNCTIONS or not hasattr(
         df_cum, operation
     ):
         raise QueryObjectValidationError(
             _("Invalid cumulative operator: %(operator)s", operator=operator)
         )
     return _append_columns(df, getattr(df_cum, operation)(), columns)
+
+
+def geohash_decode(
+    df: DataFrame, geohash: str, longitude: str, latitude: str
+) -> DataFrame:
+    """
+    Decode a geohash column into longitude and latitude
+
+    :param df: DataFrame containing geohash data
+    :param geohash: Name of source column containing geohash location.
+    :param longitude: Name of new column to be created containing longitude.
+    :param latitude: Name of new column to be created containing latitude.
+    :return: DataFrame with decoded longitudes and latitudes
+    """
+    try:
+        lonlat_df = DataFrame()
+        lonlat_df["latitude"], lonlat_df["longitude"] = zip(
+            *df[geohash].apply(geohash_lib.decode)
+        )
+        return _append_columns(
+            df, lonlat_df, {"latitude": latitude, "longitude": longitude}
+        )
+    except ValueError:
+        raise QueryObjectValidationError(_("Invalid geohash string"))
+
+
+def geohash_encode(
+    df: DataFrame, geohash: str, longitude: str, latitude: str,
+) -> DataFrame:
+    """
+    Encode longitude and latitude into geohash
+
+    :param df: DataFrame containing longitude and latitude data
+    :param geohash: Name of new column to be created containing geohash location.
+    :param longitude: Name of source column containing longitude.
+    :param latitude: Name of source column containing latitude.
+    :return: DataFrame with decoded longitudes and latitudes
+    """
+    try:
+        encode_df = df[[latitude, longitude]]
+        encode_df.columns = ["latitude", "longitude"]
+        encode_df["geohash"] = encode_df.apply(
+            lambda row: geohash_lib.encode(row["latitude"], row["longitude"]), axis=1,
+        )
+        return _append_columns(df, encode_df, {"geohash": geohash})
+    except ValueError:
+        QueryObjectValidationError(_("Invalid longitude/latitude"))
+
+
+def geodetic_parse(
+    df: DataFrame,
+    geodetic: str,
+    longitude: str,
+    latitude: str,
+    altitude: Optional[str] = None,
+) -> DataFrame:
+    """
+    Parse a column containing a geodetic point string
+    [Geopy](https://geopy.readthedocs.io/en/stable/#geopy.point.Point).
+
+    :param df: DataFrame containing geodetic point data
+    :param geodetic: Name of source column containing geodetic point string.
+    :param longitude: Name of new column to be created containing longitude.
+    :param latitude: Name of new column to be created containing latitude.
+    :param altitude: Name of new column to be created containing altitude.
+    :return: DataFrame with decoded longitudes and latitudes
+    """
+
+    def _parse_location(location: str) -> Tuple[float, float, float]:
+        """
+        Parse a string containing a geodetic point and return latitude, longitude
+        and altitude
+        """
+        point = Point(location)
+        return point[0], point[1], point[2]
+
+    try:
+        geodetic_df = DataFrame()
+        (
+            geodetic_df["latitude"],
+            geodetic_df["longitude"],
+            geodetic_df["altitude"],
+        ) = zip(*df[geodetic].apply(_parse_location))
+        columns = {"latitude": latitude, "longitude": longitude}
+        if altitude:
+            columns["altitude"] = altitude
+        return _append_columns(df, geodetic_df, columns)
+    except ValueError:
+        raise QueryObjectValidationError(_("Invalid geodetic string"))
+
+
+def contribution(
+    df: DataFrame, orientation: PostProcessingContributionOrientation
+) -> DataFrame:
+    """
+    Calculate cell contibution to row/column total.
+
+    :param df: DataFrame containing all-numeric data (temporal column ignored)
+    :param orientation: calculate by dividing cell with row/column total
+    :return: DataFrame with contributions, with temporal column at beginning if present
+    """
+    temporal_series: Optional[Series] = None
+    contribution_df = df.copy()
+    if DTTM_ALIAS in df.columns:
+        temporal_series = cast(Series, contribution_df.pop(DTTM_ALIAS))
+
+    if orientation == PostProcessingContributionOrientation.ROW:
+        contribution_dft = contribution_df.T
+        contribution_df = (contribution_dft / contribution_dft.sum()).T
+    else:
+        contribution_df = contribution_df / contribution_df.sum()
+
+    if temporal_series is not None:
+        contribution_df.insert(0, DTTM_ALIAS, temporal_series)
+    return contribution_df
+
+
+def _prophet_parse_seasonality(
+    input_value: Optional[Union[bool, int]]
+) -> Union[bool, str, int]:
+    if input_value is None:
+        return "auto"
+    if isinstance(input_value, bool):
+        return input_value
+    try:
+        return int(input_value)
+    except ValueError:
+        return input_value
+
+
+def _prophet_fit_and_predict(  # pylint: disable=too-many-arguments
+    df: DataFrame,
+    confidence_interval: float,
+    yearly_seasonality: Union[bool, str, int],
+    weekly_seasonality: Union[bool, str, int],
+    daily_seasonality: Union[bool, str, int],
+    periods: int,
+    freq: str,
+) -> DataFrame:
+    """
+    Fit a prophet model and return a DataFrame with predicted results.
+    """
+    try:
+        from fbprophet import Prophet  # pylint: disable=import-error
+    except ModuleNotFoundError:
+        raise QueryObjectValidationError(_("`fbprophet` package not installed"))
+    model = Prophet(
+        interval_width=confidence_interval,
+        yearly_seasonality=yearly_seasonality,
+        weekly_seasonality=weekly_seasonality,
+        daily_seasonality=daily_seasonality,
+    )
+    model.fit(df)
+    future = model.make_future_dataframe(periods=periods, freq=freq)
+    forecast = model.predict(future)[["ds", "yhat", "yhat_lower", "yhat_upper"]]
+    return forecast.join(df.set_index("ds"), on="ds").set_index(["ds"])
+
+
+def prophet(  # pylint: disable=too-many-arguments
+    df: DataFrame,
+    time_grain: str,
+    periods: int,
+    confidence_interval: float,
+    yearly_seasonality: Optional[Union[bool, int]] = None,
+    weekly_seasonality: Optional[Union[bool, int]] = None,
+    daily_seasonality: Optional[Union[bool, int]] = None,
+) -> DataFrame:
+    """
+    Add forecasts to each series in a timeseries dataframe, along with confidence
+    intervals for the prediction. For each series, the operation creates three
+    new columns with the column name suffixed with the following values:
+
+    - `__yhat`: the forecast for the given date
+    - `__yhat_lower`: the lower bound of the forecast for the given date
+    - `__yhat_upper`: the upper bound of the forecast for the given date
+    - `__yhat_upper`: the upper bound of the forecast for the given date
+
+
+    :param df: DataFrame containing all-numeric data (temporal column ignored)
+    :param time_grain: Time grain used to specify time period increments in prediction
+    :param periods: Time periods (in units of `time_grain`) to predict into the future
+    :param confidence_interval: Width of predicted confidence interval
+    :param yearly_seasonality: Should yearly seasonality be applied.
+           An integer value will specify Fourier order of seasonality.
+    :param weekly_seasonality: Should weekly seasonality be applied.
+           An integer value will specify Fourier order of seasonality, `None` will
+           automatically detect seasonality.
+    :param daily_seasonality: Should daily seasonality be applied.
+           An integer value will specify Fourier order of seasonality, `None` will
+           automatically detect seasonality.
+    :return: DataFrame with contributions, with temporal column at beginning if present
+    """
+    # validate inputs
+    if not time_grain:
+        raise QueryObjectValidationError(_("Time grain missing"))
+    if time_grain not in PROPHET_TIME_GRAIN_MAP:
+        raise QueryObjectValidationError(
+            _("Unsupported time grain: %(time_grain)s", time_grain=time_grain,)
+        )
+    freq = PROPHET_TIME_GRAIN_MAP[time_grain]
+    # check type at runtime due to marhsmallow schema not being able to handle
+    # union types
+    if not periods or periods < 0 or not isinstance(periods, int):
+        raise QueryObjectValidationError(_("Periods must be a positive integer value"))
+    if not confidence_interval or confidence_interval <= 0 or confidence_interval >= 1:
+        raise QueryObjectValidationError(
+            _("Confidence interval must be between 0 and 1 (exclusive)")
+        )
+    if DTTM_ALIAS not in df.columns:
+        raise QueryObjectValidationError(_("DataFrame must include temporal column"))
+    if len(df.columns) < 2:
+        raise QueryObjectValidationError(_("DataFrame include at least one series"))
+
+    target_df = DataFrame()
+    for column in [column for column in df.columns if column != DTTM_ALIAS]:
+        fit_df = _prophet_fit_and_predict(
+            df=df[[DTTM_ALIAS, column]].rename(columns={DTTM_ALIAS: "ds", column: "y"}),
+            confidence_interval=confidence_interval,
+            yearly_seasonality=_prophet_parse_seasonality(yearly_seasonality),
+            weekly_seasonality=_prophet_parse_seasonality(weekly_seasonality),
+            daily_seasonality=_prophet_parse_seasonality(daily_seasonality),
+            periods=periods,
+            freq=freq,
+        )
+        new_columns = [
+            f"{column}__yhat",
+            f"{column}__yhat_lower",
+            f"{column}__yhat_upper",
+            f"{column}",
+        ]
+        fit_df.columns = new_columns
+        if target_df.empty:
+            target_df = fit_df
+        else:
+            for new_column in new_columns:
+                target_df = target_df.assign(**{new_column: fit_df[new_column]})
+    target_df.reset_index(level=0, inplace=True)
+    return target_df.rename(columns={"ds": DTTM_ALIAS})

@@ -18,8 +18,9 @@
  */
 import cx from 'classnames';
 import React from 'react';
+import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
-import { exportChart } from '../../../explore/exploreUtils';
+import { exploreChart, exportChart } from '../../../explore/exploreUtils';
 import SliceHeader from '../SliceHeader';
 import ChartContainer from '../../../chart/ChartContainer';
 import MissingChart from '../MissingChart';
@@ -41,6 +42,9 @@ const propTypes = {
   height: PropTypes.number.isRequired,
   updateSliceName: PropTypes.func.isRequired,
   isComponentVisible: PropTypes.bool,
+  // last switched tab
+  mountedParent: PropTypes.string,
+  handleToggleFullSize: PropTypes.func.isRequired,
 
   // from redux
   chart: chartPropShape.isRequired,
@@ -69,6 +73,7 @@ const propTypes = {
 const defaultProps = {
   isCached: false,
   isComponentVisible: true,
+  mountedParent: 'ROOT',
 };
 
 // we use state + shouldComponentUpdate() logic to prevent perf-wrecking
@@ -113,8 +118,17 @@ class Chart extends React.Component {
     // allow chart update/re-render only if visible:
     // under selected tab or no tab layout
     if (nextProps.isComponentVisible) {
+      if (nextProps.mountedParent === null) {
+        return false;
+      }
       if (nextProps.chart.triggerQuery) {
         return true;
+      }
+
+      if (nextProps.isFullSize !== this.props.isFullSize) {
+        clearTimeout(this.resizeTimeout);
+        this.resizeTimeout = setTimeout(this.resize, RESIZE_TIMEOUT);
+        return false;
       }
 
       for (let i = 0; i < SHOULD_UPDATE_ON_PROP_CHANGES.length; i += 1) {
@@ -133,7 +147,7 @@ class Chart extends React.Component {
       }
     }
 
-    // `cacheBusterProp` is nnjected by react-hot-loader
+    // `cacheBusterProp` is jected by react-hot-loader
     return this.props.cacheBusterProp !== nextProps.cacheBusterProp;
   }
 
@@ -191,7 +205,7 @@ class Chart extends React.Component {
       slice_id: this.props.slice.slice_id,
       is_cached: this.props.isCached,
     });
-    exportChart(this.props.formData);
+    exploreChart(this.props.formData);
   }
 
   exportCSV() {
@@ -199,7 +213,11 @@ class Chart extends React.Component {
       slice_id: this.props.slice.slice_id,
       is_cached: this.props.isCached,
     });
-    exportChart(this.props.formData, 'csv');
+    exportChart({
+      formData: this.props.formData,
+      resultType: 'results',
+      resultFormat: 'csv',
+    });
   }
 
   forceRefresh() {
@@ -234,6 +252,8 @@ class Chart extends React.Component {
       supersetCanCSV,
       sliceCanEdit,
       addDangerToast,
+      handleToggleFullSize,
+      isFullSize,
     } = this.props;
 
     const { width } = this.state;
@@ -279,6 +299,8 @@ class Chart extends React.Component {
           dashboardId={dashboardId}
           filters={filters}
           addDangerToast={addDangerToast}
+          handleToggleFullSize={handleToggleFullSize}
+          isFullSize={isFullSize}
         />
 
         {/*
@@ -321,6 +343,7 @@ class Chart extends React.Component {
             timeout={timeout}
             triggerQuery={chart.triggerQuery}
             vizType={slice.viz_type}
+            owners={slice.owners}
           />
         </div>
       </div>
@@ -331,4 +354,20 @@ class Chart extends React.Component {
 Chart.propTypes = propTypes;
 Chart.defaultProps = defaultProps;
 
-export default Chart;
+function mapStateToProps({ dashboardState }) {
+  return {
+    // needed to prevent chart from rendering while tab switch animation in progress
+    // when undefined, default to have mounted the root tab
+    mountedParent: dashboardState?.mountedTab,
+  };
+}
+
+/**
+ * The original Chart component not connected to state.
+ */
+export const ChartUnconnected = Chart;
+
+/**
+ * Redux connected Chart component.
+ */
+export default connect(mapStateToProps, null)(Chart);

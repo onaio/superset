@@ -23,8 +23,8 @@ import sinon from 'sinon';
 import fetchMock from 'fetch-mock';
 import thunk from 'redux-thunk';
 
+import TableSelector from 'src/components/TableSelector';
 import { initialState, tables } from '../sqllab/fixtures';
-import TableSelector from '../../../src/components/TableSelector';
 
 describe('TableSelector', () => {
   let mockedProps;
@@ -176,7 +176,7 @@ describe('TableSelector', () => {
     });
 
     // Test needs to be fixed: Github issue #7768
-    xit('should dispatch a danger toast on error', () => {
+    it.skip('should dispatch a danger toast on error', () => {
       fetchMock.get(
         FETCH_TABLES_GLOB,
         { throws: 'error' },
@@ -196,13 +196,13 @@ describe('TableSelector', () => {
   });
 
   describe('fetchSchemas', () => {
-    const FETCH_SCHEMAS_GLOB = 'glob:*/superset/schemas/*/*/';
+    const FETCH_SCHEMAS_GLOB = 'glob:*/api/v1/database/*/schemas/?q=(force:!*)';
     afterEach(fetchMock.resetHistory);
     afterAll(fetchMock.reset);
 
     it('should fetch schema options', () => {
       const schemaOptions = {
-        schemas: ['main', 'erf', 'superset'],
+        result: ['main', 'erf', 'superset'],
       };
       fetchMock.get(FETCH_SCHEMAS_GLOB, schemaOptions, {
         overwriteRoutes: true,
@@ -218,7 +218,7 @@ describe('TableSelector', () => {
     });
 
     // Test needs to be fixed: Github issue #7768
-    xit('should dispatch a danger toast on error', () => {
+    it.skip('should dispatch a danger toast on error', () => {
       const handleErrors = sinon.stub();
       expect(handleErrors.callCount).toBe(0);
       wrapper.setProps({ handleErrors });

@@ -16,9 +16,8 @@
 # under the License.
 """Defines the templating context for SQL Lab"""
 import inspect
-import json
 import re
-from typing import Any, List, Optional, Tuple
+from typing import Any, cast, List, Optional, Tuple, TYPE_CHECKING
 
 from flask import g, request
 from jinja2.sandbox import SandboxedEnvironment
@@ -26,6 +25,13 @@ from jinja2.sandbox import SandboxedEnvironment
 from superset import jinja_base_context
 from superset.extensions import jinja_context_manager
 from superset.utils.core import convert_legacy_filters_into_adhoc, merge_extra_filters
+
+if TYPE_CHECKING:
+    from superset.connectors.sqla.models import (  # pylint: disable=unused-import
+        SqlaTable,
+    )
+    from superset.models.core import Database  # pylint: disable=unused-import
+    from superset.models.sql_lab import Query  # pylint: disable=unused-import
 
 
 def filter_values(column: str, default: Optional[str] = None) -> List[str]:
@@ -49,7 +55,9 @@ def filter_values(column: str, default: Optional[str] = None) -> List[str]:
     :return: returns a list of filter values
     """
 
-    form_data = json.loads(request.form.get("form_data", "{}"))
+    from superset.views.utils import get_form_data
+
+    form_data, _ = get_form_data()
     convert_legacy_filters_into_adhoc(form_data)
     merge_extra_filters(form_data)
 
@@ -168,18 +176,16 @@ class ExtraCache:
         :returns: The URL parameters
         """
 
+        from superset.views.utils import get_form_data
+
         if request.args.get(param):
             return request.args.get(param, default)
-        # Supporting POST as well as get
-        form_data = request.form.get("form_data")
-        if isinstance(form_data, str):
-            form_data = json.loads(form_data)
-            url_params = form_data.get("url_params") or {}
-            result = url_params.get(param, default)
-            if add_to_cache_keys:
-                self.cache_key_wrapper(result)
-            return result
-        return default
+        form_data, _ = get_form_data()
+        url_params = form_data.get("url_params") or {}
+        result = url_params.get(param, default)
+        if add_to_cache_keys:
+            self.cache_key_wrapper(result)
+        return result
 
 
 class BaseTemplateProcessor:  # pylint: disable=too-few-public-methods
@@ -201,12 +207,12 @@ class BaseTemplateProcessor:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        database=None,
-        query=None,
-        table=None,
+        database: "Database",
+        query: Optional["Query"] = None,
+        table: Optional["SqlaTable"] = None,
         extra_cache_keys: Optional[List[Any]] = None,
-        **kwargs
-    ):
+        **kwargs: Any,
+    ) -> None:
         self.database = database
         self.query = query
         self.schema = None
@@ -231,7 +237,7 @@ class BaseTemplateProcessor:  # pylint: disable=too-few-public-methods
             self.context[self.engine] = self
         self.env = SandboxedEnvironment()
 
-    def process_template(self, sql: str, **kwargs) -> str:
+    def process_template(self, sql: str, **kwargs: Any) -> str:
         """Processes a sql template
 
         >>> sql = "SELECT '{{ datetime(2017, 1, 1).isoformat() }}'"
@@ -260,7 +266,7 @@ class PrestoTemplateProcessor(BaseTemplateProcessor):
             schema, table_name = table_name.split(".")
         return table_name, schema
 
-    def first_latest_partition(self, table_name: str) -> str:
+    def first_latest_partition(self, table_name: str) -> Optional[str]:
         """
         Gets the first value in the array of all latest partitions
 
@@ -269,9 +275,10 @@ class PrestoTemplateProcessor(BaseTemplateProcessor):
         :raises IndexError: If no partition exists
         """
 
-        return self.latest_partitions(table_name)[0]
+        latest_partitions = self.latest_partitions(table_name)
+        return latest_partitions[0] if latest_partitions else None
 
-    def latest_partitions(self, table_name: str) -> List[str]:
+    def latest_partitions(self, table_name: str) -> Optional[List[str]]:
         """
         Gets the array of all latest partitions
 
@@ -279,14 +286,21 @@ class PrestoTemplateProcessor(BaseTemplateProcessor):
         :return: the latest partition array
         """
 
+        from superset.db_engine_specs.presto import PrestoEngineSpec
+
         table_name, schema = self._schema_table(table_name, self.schema)
-        return self.database.db_engine_spec.latest_partition(
+        return cast(PrestoEngineSpec, self.database.db_engine_spec).latest_partition(
             table_name, schema, self.database
         )[1]
 
-    def latest_sub_partition(self, table_name, **kwargs):
+    def latest_sub_partition(self, table_name: str, **kwargs: Any) -> Any:
         table_name, schema = self._schema_table(table_name, self.schema)
-        return self.database.db_engine_spec.latest_sub_partition(
+
+        from superset.db_engine_specs.presto import PrestoEngineSpec
+
+        return cast(
+            PrestoEngineSpec, self.database.db_engine_spec
+        ).latest_sub_partition(
             table_name=table_name, schema=schema, database=self.database, **kwargs
         )
 
@@ -306,7 +320,12 @@ for k in keys:
         template_processors[o.engine] = o
 
 
-def get_template_processor(database, table=None, query=None, **kwargs):
+def get_template_processor(
+    database: "Database",
+    table: Optional["SqlaTable"] = None,
+    query: Optional["Query"] = None,
+    **kwargs: Any,
+) -> BaseTemplateProcessor:
     template_processor = template_processors.get(
         database.backend, BaseTemplateProcessor
     )

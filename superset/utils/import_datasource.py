@@ -15,15 +15,23 @@
 # specific language governing permissions and limitations
 # under the License.
 import logging
+from typing import Callable, Optional
 
+from flask_appbuilder import Model
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.session import make_transient
 
 logger = logging.getLogger(__name__)
 
 
-def import_datasource(
-    session, i_datasource, lookup_database, lookup_datasource, import_time
-):
+def import_datasource(  # pylint: disable=too-many-arguments
+    session: Session,
+    i_datasource: Model,
+    lookup_database: Callable[[Model], Model],
+    lookup_datasource: Callable[[Model], Model],
+    import_time: Optional[int] = None,
+    database_id: Optional[int] = None,
+) -> int:
     """Imports the datasource from the object to the database.
 
      Metrics and columns and datasource will be overrided if exists.
@@ -34,7 +42,9 @@ def import_datasource(
     logger.info("Started import of the datasource: %s", i_datasource.to_json())
 
     i_datasource.id = None
-    i_datasource.database_id = lookup_database(i_datasource).id
+    i_datasource.database_id = (
+        database_id if database_id else lookup_database(i_datasource).id
+    )
     i_datasource.alter_params(import_time=import_time)
 
     # override the datasource
@@ -75,7 +85,9 @@ def import_datasource(
     return datasource.id
 
 
-def import_simple_obj(session, i_obj, lookup_obj):
+def import_simple_obj(
+    session: Session, i_obj: Model, lookup_obj: Callable[[Model], Model]
+) -> Model:
     make_transient(i_obj)
     i_obj.id = None
     i_obj.table = None

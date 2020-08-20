@@ -20,11 +20,12 @@
 import React from 'react';
 import sinon from 'sinon';
 import { shallow } from 'enzyme';
-import { Label, OverlayTrigger } from 'react-bootstrap';
+import { OverlayTrigger } from 'react-bootstrap';
 
-import AdhocMetric from '../../../../src/explore/AdhocMetric';
-import AdhocMetricOption from '../../../../src/explore/components/AdhocMetricOption';
-import { AGGREGATES } from '../../../../src/explore/constants';
+import Label from 'src/components/Label';
+import AdhocMetric from 'src/explore/AdhocMetric';
+import AdhocMetricOption from 'src/explore/components/AdhocMetricOption';
+import { AGGREGATES } from 'src/explore/constants';
 
 const columns = [
   { type: 'VARCHAR(255)', column_name: 'source' },
@@ -52,7 +53,14 @@ function setup(overrides) {
 describe('AdhocMetricOption', () => {
   it('renders an overlay trigger wrapper for the label', () => {
     const { wrapper } = setup();
-    expect(wrapper.find(OverlayTrigger)).toHaveLength(1);
-    expect(wrapper.find(Label)).toHaveLength(1);
+    expect(wrapper.find(OverlayTrigger)).toExist();
+    expect(wrapper.find(Label)).toExist();
+  });
+
+  it('overlay should open if metric is new', () => {
+    const { wrapper } = setup({
+      adhocMetric: sumValueAdhocMetric.duplicateWith({ isNew: true }),
+    });
+    expect(wrapper.find(OverlayTrigger).props().defaultOverlayShown).toBe(true);
   });
 });

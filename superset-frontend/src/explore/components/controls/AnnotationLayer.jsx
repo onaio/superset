@@ -195,10 +195,7 @@ export default class AnnotationLayer extends React.PureComponent {
   isValidFormula(value, annotationType) {
     if (annotationType === ANNOTATION_TYPES.FORMULA) {
       try {
-        mathjs
-          .parse(value)
-          .compile()
-          .eval({ x: 0 });
+        mathjs.parse(value).compile().eval({ x: 0 });
       } catch (err) {
         return true;
       }
@@ -243,12 +240,16 @@ export default class AnnotationLayer extends React.PureComponent {
   }
 
   handleAnnotationSourceType(sourceType) {
-    this.setState({
-      sourceType,
-      isLoadingOptions: true,
-      validationErrors: {},
-      value: null,
-    });
+    const { sourceType: prevSourceType } = this.state;
+
+    if (prevSourceType !== sourceType) {
+      this.setState({
+        sourceType,
+        isLoadingOptions: true,
+        validationErrors: {},
+        value: null,
+      });
+    }
   }
 
   handleValue(value) {

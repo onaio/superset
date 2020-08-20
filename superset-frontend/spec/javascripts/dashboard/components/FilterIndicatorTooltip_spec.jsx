@@ -19,7 +19,7 @@
 import React from 'react';
 import { shallow } from 'enzyme';
 
-import FilterIndicatorTooltip from '../../../../src/dashboard/components/FilterIndicatorTooltip';
+import FilterIndicatorTooltip from 'src/dashboard/components/FilterIndicatorTooltip';
 
 describe('FilterIndicatorTooltip', () => {
   const label = 'region';
@@ -38,6 +38,6 @@ describe('FilterIndicatorTooltip', () => {
 
   it('should show label', () => {
     const wrapper = setup();
-    expect(wrapper.find(`[htmlFor="filter-tooltip-${label}"]`)).toHaveLength(1);
+    expect(wrapper.find(`[htmlFor="filter-tooltip-${label}"]`)).toExist();
   });
 });

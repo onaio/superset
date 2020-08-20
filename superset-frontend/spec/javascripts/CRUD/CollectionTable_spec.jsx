@@ -19,7 +19,7 @@
 import React from 'react';
 import { shallow } from 'enzyme';
 
-import CollectionTable from '../../../src/CRUD/CollectionTable';
+import CollectionTable from 'src/CRUD/CollectionTable';
 import mockDatasource from '../../fixtures/mockDatasource';
 
 const props = {
@@ -42,7 +42,7 @@ describe('CollectionTable', () => {
 
   it('renders a table', () => {
     const length = mockDatasource['7__table'].columns.length;
-    expect(wrapper.find('table')).toHaveLength(1);
+    expect(wrapper.find('table')).toExist();
     expect(wrapper.find('tbody tr.row')).toHaveLength(length);
   });
 });

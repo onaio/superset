@@ -17,22 +17,25 @@
  * under the License.
  */
 /* eslint-env browser */
+import moment from 'moment';
 import React from 'react';
 import PropTypes from 'prop-types';
+import styled from '@superset-ui/style';
+import { ButtonGroup } from 'react-bootstrap';
 import { CategoricalColorNamespace } from '@superset-ui/color';
 import { t } from '@superset-ui/translation';
+
+import Icon from 'src/components/Icon';
 
 import HeaderActionsDropdown from './HeaderActionsDropdown';
 import EditableTitle from '../../components/EditableTitle';
 import Button from '../../components/Button';
 import FaveStar from '../../components/FaveStar';
-import FilterScopeModal from './filterscope/FilterScopeModal';
 import PublishedStatus from './PublishedStatus';
 import UndoRedoKeylisteners from './UndoRedoKeylisteners';
 
 import { chartPropShape } from '../util/propShapes';
 import {
-  BUILDER_PANE_TYPE,
   UNDO_LIMIT,
   SAVE_TYPE_OVERWRITE,
   DASHBOARD_POSITION_DATA_LIMIT,
@@ -46,6 +49,7 @@ import {
 } from '../../logger/LogUtils';
 import PropertiesModal from './PropertiesModal';
 import setPeriodicRunner from '../util/setPeriodicRunner';
+import { options as PeriodicRefreshOptions } from './RefreshIntervalModal';
 
 const propTypes = {
   addSuccessToast: PropTypes.func.isRequired,
@@ -56,9 +60,10 @@ const propTypes = {
   charts: PropTypes.objectOf(chartPropShape).isRequired,
   layout: PropTypes.object.isRequired,
   expandedSlices: PropTypes.object.isRequired,
-  css: PropTypes.string.isRequired,
+  customCss: PropTypes.string.isRequired,
   colorNamespace: PropTypes.string,
   colorScheme: PropTypes.string,
+  setColorSchemeAndUnsavedChanges: PropTypes.func.isRequired,
   isStarred: PropTypes.bool.isRequired,
   isPublished: PropTypes.bool.isRequired,
   isLoading: PropTypes.bool.isRequired,
@@ -72,7 +77,6 @@ const propTypes = {
   editMode: PropTypes.bool.isRequired,
   setEditMode: PropTypes.func.isRequired,
   showBuilderPane: PropTypes.func.isRequired,
-  builderPaneType: PropTypes.string.isRequired,
   updateCss: PropTypes.func.isRequired,
   logEvent: PropTypes.func.isRequired,
   hasUnsavedChanges: PropTypes.bool.isRequired,
@@ -86,6 +90,7 @@ const propTypes = {
   setMaxUndoHistoryExceeded: PropTypes.func.isRequired,
   maxUndoHistoryToast: PropTypes.func.isRequired,
   refreshFrequency: PropTypes.number.isRequired,
+  shouldPersistRefreshFrequency: PropTypes.bool.isRequired,
   setRefreshFrequency: PropTypes.func.isRequired,
   dashboardInfoChanged: PropTypes.func.isRequired,
   dashboardTitleChanged: PropTypes.func.isRequired,
@@ -95,6 +100,14 @@ const defaultProps = {
   colorNamespace: undefined,
   colorScheme: undefined,
 };
+
+// Styled Components
+const StyledDashboardHeader = styled.div`
+  button,
+  .fave-unfave-icon {
+    margin-left: 8px;
+  }
+`;
 
 class Header extends React.PureComponent {
   static discardChanges() {
@@ -112,10 +125,6 @@ class Header extends React.PureComponent {
     this.handleChangeText = this.handleChangeText.bind(this);
     this.handleCtrlZ = this.handleCtrlZ.bind(this);
     this.handleCtrlY = this.handleCtrlY.bind(this);
-    this.onInsertComponentsButtonClick = this.onInsertComponentsButtonClick.bind(
-      this,
-    );
-    this.onColorsButtonClick = this.onColorsButtonClick.bind(this);
     this.toggleEditMode = this.toggleEditMode.bind(this);
     this.forceRefresh = this.forceRefresh.bind(this);
     this.startPeriodicRender = this.startPeriodicRender.bind(this);
@@ -148,14 +157,6 @@ class Header extends React.PureComponent {
   componentWillUnmount() {
     clearTimeout(this.ctrlYTimeout);
     clearTimeout(this.ctrlZTimeout);
-  }
-
-  onInsertComponentsButtonClick() {
-    this.props.showBuilderPane(BUILDER_PANE_TYPE.ADD_COMPONENTS);
-  }
-
-  onColorsButtonClick() {
-    this.props.showBuilderPane(BUILDER_PANE_TYPE.COLORS);
   }
 
   handleChangeText(nextText) {
@@ -206,6 +207,18 @@ class Header extends React.PureComponent {
   }
 
   startPeriodicRender(interval) {
+    let intervalMessage;
+    if (interval) {
+      const predefinedValue = PeriodicRefreshOptions.find(
+        option => option.value === interval / 1000,
+      );
+      if (predefinedValue) {
+        intervalMessage = predefinedValue.label;
+      } else {
+        intervalMessage = moment.duration(interval, 'millisecond').humanize();
+      }
+    }
+
     const periodicRender = () => {
       const { fetchCharts, logEvent, charts, dashboardInfo } = this.props;
       const { metadata } = dashboardInfo;
@@ -218,6 +231,13 @@ class Header extends React.PureComponent {
         interval,
         chartCount: affectedCharts.length,
       });
+      this.props.addWarningToast(
+        t(
+          `This dashboard is currently force refreshing; the next force refresh will be in %s.`,
+          intervalMessage,
+        ),
+      );
+
       return fetchCharts(
         affectedCharts,
         true,
@@ -245,11 +265,12 @@ class Header extends React.PureComponent {
       dashboardTitle,
       layout: positions,
       expandedSlices,
-      css,
+      customCss,
       colorNamespace,
       colorScheme,
       dashboardInfo,
-      refreshFrequency,
+      refreshFrequency: currentRefreshFrequency,
+      shouldPersistRefreshFrequency,
     } = this.props;
 
     const scale = CategoricalColorNamespace.getScale(
@@ -257,10 +278,15 @@ class Header extends React.PureComponent {
       colorNamespace,
     );
     const labelColors = colorScheme ? scale.getColorMap() : {};
+    // check refresh frequency is for current session or persist
+    const refreshFrequency = shouldPersistRefreshFrequency
+      ? currentRefreshFrequency
+      : dashboardInfo.metadata.refresh_frequency; // eslint-disable camelcase
+
     const data = {
       positions,
       expanded_slices: expandedSlices,
-      css,
+      css: customCss,
       color_namespace: colorNamespace,
       color_scheme: colorScheme,
       label_colors: labelColors,
@@ -301,8 +327,9 @@ class Header extends React.PureComponent {
       dashboardTitle,
       layout,
       expandedSlices,
-      css,
+      customCss,
       colorNamespace,
+      setColorSchemeAndUnsavedChanges,
       colorScheme,
       onUndo,
       onRedo,
@@ -313,20 +340,24 @@ class Header extends React.PureComponent {
       updateCss,
       editMode,
       isPublished,
-      builderPaneType,
       dashboardInfo,
       hasUnsavedChanges,
       isLoading,
       refreshFrequency,
+      shouldPersistRefreshFrequency,
       setRefreshFrequency,
     } = this.props;
 
     const userCanEdit = dashboardInfo.dash_edit_perm;
     const userCanSaveAs = dashboardInfo.dash_save_perm;
-    const popButton = hasUnsavedChanges;
+    const refreshLimit =
+      dashboardInfo.common.conf.SUPERSET_DASHBOARD_PERIODICAL_REFRESH_LIMIT;
+    const refreshWarning =
+      dashboardInfo.common.conf
+        .SUPERSET_DASHBOARD_PERIODICAL_REFRESH_WARNING_MESSAGE;
 
     return (
-      <div className="dashboard-header">
+      <StyledDashboardHeader className="dashboard-header">
         <div className="dashboard-component-header header-large">
           <EditableTitle
             title={dashboardTitle}
@@ -334,24 +365,21 @@ class Header extends React.PureComponent {
             onSaveTitle={this.handleChangeText}
             showTooltip={false}
           />
-          <span className="publish">
-            <PublishedStatus
-              dashboardId={dashboardInfo.id}
-              isPublished={isPublished}
-              savePublished={this.props.savePublished}
-              canEdit={userCanEdit}
-              canSave={userCanSaveAs}
-            />
-          </span>
+          <PublishedStatus
+            dashboardId={dashboardInfo.id}
+            isPublished={isPublished}
+            savePublished={this.props.savePublished}
+            canEdit={userCanEdit}
+            canSave={userCanSaveAs}
+          />
           {dashboardInfo.userId && (
-            <span className="favstar">
-              <FaveStar
-                itemId={dashboardInfo.id}
-                fetchFaveStar={this.props.fetchFaveStar}
-                saveFaveStar={this.props.saveFaveStar}
-                isStarred={this.props.isStarred}
-              />
-            </span>
+            <FaveStar
+              itemId={dashboardInfo.id}
+              fetchFaveStar={this.props.fetchFaveStar}
+              saveFaveStar={this.props.saveFaveStar}
+              isStarred={this.props.isStarred}
+              showTooltip
+            />
           )}
         </div>
 
@@ -359,92 +387,63 @@ class Header extends React.PureComponent {
           {userCanSaveAs && (
             <div className="button-container">
               {editMode && (
-                <Button
-                  bsSize="small"
-                  onClick={onUndo}
-                  disabled={undoLength < 1}
-                  bsStyle={this.state.emphasizeUndo ? 'primary' : undefined}
-                >
-                  <div title="Undo" className="undo-action fa fa-reply" />
-                </Button>
-              )}
-
-              {editMode && (
-                <Button
-                  bsSize="small"
-                  onClick={onRedo}
-                  disabled={redoLength < 1}
-                  bsStyle={this.state.emphasizeRedo ? 'primary' : undefined}
-                >
-                  <div title="Redo" className="redo-action fa fa-share" />
-                </Button>
-              )}
-
-              {editMode && (
-                <Button
-                  active={builderPaneType === BUILDER_PANE_TYPE.ADD_COMPONENTS}
-                  bsSize="small"
-                  onClick={this.onInsertComponentsButtonClick}
-                >
-                  {t('Components')}
-                </Button>
-              )}
-
-              {editMode && (
-                <Button
-                  active={builderPaneType === BUILDER_PANE_TYPE.COLORS}
-                  bsSize="small"
-                  onClick={this.onColorsButtonClick}
-                >
-                  {t('Colors')}
-                </Button>
-              )}
-
-              {editMode && (
-                <FilterScopeModal
-                  triggerNode={<Button bsSize="small">{t('Filters')}</Button>}
-                />
-              )}
-
-              {editMode && hasUnsavedChanges && (
-                <Button
-                  bsSize="small"
-                  bsStyle={popButton ? 'primary' : undefined}
-                  onClick={this.overwriteDashboard}
-                >
-                  {t('Save changes')}
-                </Button>
-              )}
-
-              {editMode && !hasUnsavedChanges && (
-                <Button
-                  bsSize="small"
-                  onClick={this.toggleEditMode}
-                  bsStyle={undefined}
-                  disabled={!userCanEdit}
-                >
-                  {t('Switch to view mode')}
-                </Button>
-              )}
-
-              {editMode && (
-                <UndoRedoKeylisteners
-                  onUndo={this.handleCtrlZ}
-                  onRedo={this.handleCtrlY}
-                />
+                <>
+                  <ButtonGroup className="m-r-5">
+                    <Button
+                      bsSize="small"
+                      onClick={onUndo}
+                      disabled={undoLength < 1}
+                      bsStyle={this.state.emphasizeUndo ? 'primary' : undefined}
+                    >
+                      <i title="Undo" className="undo-action fa fa-reply" />
+                      &nbsp;
+                    </Button>
+                    <Button
+                      bsSize="small"
+                      onClick={onRedo}
+                      disabled={redoLength < 1}
+                      bsStyle={this.state.emphasizeRedo ? 'primary' : undefined}
+                    >
+                      &nbsp;
+                      <i title="Redo" className="redo-action fa fa-share" />
+                    </Button>
+                  </ButtonGroup>
+                  <Button
+                    bsSize="small"
+                    className="m-r-5"
+                    onClick={this.constructor.discardChanges}
+                    bsStyle="default"
+                  >
+                    {t('Discard Changes')}
+                  </Button>
+                  <Button
+                    bsSize="small"
+                    disabled={!hasUnsavedChanges}
+                    bsStyle="primary"
+                    onClick={this.overwriteDashboard}
+                  >
+                    {t('Save')}
+                  </Button>
+                </>
               )}
             </div>
           )}
+          {editMode && (
+            <UndoRedoKeylisteners
+              onUndo={this.handleCtrlZ}
+              onRedo={this.handleCtrlY}
+            />
+          )}
 
-          {!editMode && !hasUnsavedChanges && (
-            <Button
-              bsSize="small"
+          {!editMode && (
+            <span
+              role="button"
+              tabIndex={0}
+              className="action-button"
               onClick={this.toggleEditMode}
-              bsStyle={popButton ? 'primary' : undefined}
-              disabled={!userCanEdit}
             >
-              {t('Edit dashboard')}
-            </Button>
+              <Icon name="pencil" />
+            </span>
           )}
 
           {this.state.showingPropertiesModal && (
@@ -452,12 +451,18 @@ class Header extends React.PureComponent {
               dashboardId={dashboardInfo.id}
               show={this.state.showingPropertiesModal}
               onHide={this.hidePropertiesModal}
-              onDashboardSave={updates => {
-                this.props.dashboardInfoChanged({
+              colorScheme={this.props.colorScheme}
+              onSubmit={updates => {
+                const {
+                  dashboardInfoChanged,
+                  dashboardTitleChanged,
+                } = this.props;
+                dashboardInfoChanged({
                   slug: updates.slug,
                   metadata: JSON.parse(updates.jsonMetadata),
                 });
-                this.props.dashboardTitleChanged(updates.title);
+                setColorSchemeAndUnsavedChanges(updates.colorScheme);
+                dashboardTitleChanged(updates.title);
                 if (updates.slug) {
                   history.pushState(
                     { event: 'dashboard_properties_changed' },
@@ -474,9 +479,10 @@ class Header extends React.PureComponent {
             addDangerToast={this.props.addDangerToast}
             dashboardId={dashboardInfo.id}
             dashboardTitle={dashboardTitle}
+            dashboardInfo={dashboardInfo}
             layout={layout}
             expandedSlices={expandedSlices}
-            css={css}
+            customCss={customCss}
             colorNamespace={colorNamespace}
             colorScheme={colorScheme}
             onSave={onSave}
@@ -484,6 +490,7 @@ class Header extends React.PureComponent {
             forceRefreshAllCharts={this.forceRefresh}
             startPeriodicRender={this.startPeriodicRender}
             refreshFrequency={refreshFrequency}
+            shouldPersistRefreshFrequency={shouldPersistRefreshFrequency}
             setRefreshFrequency={setRefreshFrequency}
             updateCss={updateCss}
             editMode={editMode}
@@ -492,9 +499,11 @@ class Header extends React.PureComponent {
             userCanSave={userCanSaveAs}
             isLoading={isLoading}
             showPropertiesModal={this.showPropertiesModal}
+            refreshLimit={refreshLimit}
+            refreshWarning={refreshWarning}
           />
         </div>
-      </div>
+      </StyledDashboardHeader>
     );
   }
 }

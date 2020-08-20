@@ -28,14 +28,17 @@ import {
 } from 'react-bootstrap';
 // @ts-ignore
 import Dialog from 'react-bootstrap-dialog';
-import { Async as SelectAsync, Option } from 'react-select';
+import { OptionsType } from 'react-select/src/types';
+import { AsyncSelect } from 'src/components/Select';
 import rison from 'rison';
 import { t } from '@superset-ui/translation';
-import { SupersetClient, Json } from '@superset-ui/connection';
+import { SupersetClient } from '@superset-ui/connection';
 import Chart from 'src/types/Chart';
+import FormLabel from 'src/components/FormLabel';
 import getClientErrorObject from '../../utils/getClientErrorObject';
 
 export type Slice = {
+  id?: number;
   slice_id: number;
   slice_name: string;
   description: string | null;
@@ -46,6 +49,11 @@ type InternalProps = {
   slice: Slice;
   onHide: () => void;
   onSave: (chart: Chart) => void;
+};
+
+type OwnerOption = {
+  label: string;
+  value: number;
 };
 
 export type WrapperProps = InternalProps & {
@@ -78,7 +86,7 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
   const [cacheTimeout, setCacheTimeout] = useState(
     slice.cache_timeout != null ? slice.cache_timeout : '',
   );
-  const [owners, setOwners] = useState<Option[] | null>(null);
+  const [owners, setOwners] = useState<OptionsType<OwnerOption> | null>(null);
 
   function showError({ error, statusText }: any) {
     errorDialog.current.show({
@@ -95,7 +103,7 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
       const response = await SupersetClient.get({
         endpoint: `/api/v1/chart/${slice.slice_id}`,
       });
-      const chart = (response.json as Json).result;
+      const chart = response.json.result;
       setOwners(
         chart.owners.map((owner: any) => ({
           value: owner.id,
@@ -114,21 +122,22 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
   }, []);
 
   const loadOptions = (input = '') => {
-    const query = rison.encode({ filter: input });
+    const query = rison.encode({
+      filter: input,
+    });
     return SupersetClient.get({
       endpoint: `/api/v1/chart/related/owners?q=${query}`,
     }).then(
       response => {
-        const { result } = response.json as Json;
-        const options = result.map((item: any) => ({
+        const { result } = response.json;
+        return result.map((item: any) => ({
           value: item.value,
           label: item.text,
         }));
-        return { options };
       },
       badResponse => {
         getClientErrorObject(badResponse).then(showError);
-        return { options: [] };
+        return [];
       },
     );
   };
@@ -153,7 +162,7 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
       });
       // update the redux state
       const updatedChart = {
-        ...(res.json as Json).result,
+        ...res.json.result,
         id: slice.slice_id,
       };
       onSave(updatedChart);
@@ -175,29 +184,29 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
           <Col md={6}>
             <h3>{t('Basic Information')}</h3>
             <FormGroup>
-              <label className="control-label" htmlFor="name">
+              <FormLabel htmlFor="name" required>
                 {t('Name')}
-              </label>
+              </FormLabel>
               <FormControl
                 name="name"
                 type="text"
                 bsSize="sm"
                 value={name}
+                // @ts-ignore
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                   setName(event.target.value)
                 }
               />
             </FormGroup>
             <FormGroup>
-              <label className="control-label" htmlFor="description">
-                {t('Description')}
-              </label>
+              <FormLabel htmlFor="description">{t('Description')}</FormLabel>
               <FormControl
                 name="description"
                 type="text"
                 componentClass="textarea"
                 bsSize="sm"
                 value={description}
+                // @ts-ignore
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                   setDescription(event.target.value)
                 }
@@ -213,14 +222,13 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
           <Col md={6}>
             <h3>{t('Configuration')}</h3>
             <FormGroup>
-              <label className="control-label" htmlFor="cacheTimeout">
-                {t('Cache Timeout')}
-              </label>
+              <FormLabel htmlFor="cacheTimeout">{t('Cache Timeout')}</FormLabel>
               <FormControl
                 name="cacheTimeout"
                 type="text"
                 bsSize="sm"
                 value={cacheTimeout}
+                // @ts-ignore
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                   setCacheTimeout(event.target.value.replace(/[^0-9]/, ''))
                 }
@@ -233,17 +241,17 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
             </FormGroup>
             <h3 style={{ marginTop: '1em' }}>{t('Access')}</h3>
             <FormGroup>
-              <label className="control-label" htmlFor="owners">
-                {t('Owners')}
-              </label>
-              <SelectAsync
-                multi
+              <FormLabel htmlFor="owners">{t('Owners')}</FormLabel>
+              <AsyncSelect
+                isMulti
                 name="owners"
                 value={owners || []}
                 loadOptions={loadOptions}
+                defaultOptions // load options on render
+                cacheOptions
                 onChange={setOwners}
                 disabled={!owners}
-                filterOption={() => true} // options are filtered at the api
+                filterOption={null} // options are filtered at the api
               />
               <p className="help-block">
                 {t(
@@ -255,17 +263,17 @@ function PropertiesModal({ slice, onHide, onSave }: InternalProps) {
         </Row>
       </Modal.Body>
       <Modal.Footer>
+        <Button type="button" bsSize="sm" onClick={onHide}>
+          {t('Cancel')}
+        </Button>
         <Button
           type="submit"
           bsSize="sm"
           bsStyle="primary"
           className="m-r-5"
-          disabled={!owners || submitting}
+          disabled={!owners || submitting || !name}
         >
           {t('Save')}
-        </Button>
-        <Button type="button" bsSize="sm" onClick={onHide}>
-          {t('Cancel')}
         </Button>
         <Dialog ref={errorDialog} />
       </Modal.Footer>

@@ -33,6 +33,8 @@ import {
   useQueryParams,
 } from 'use-query-params';
 
+import { isEqual } from 'lodash';
+import { PartialStylesConfig } from 'src/components/Select';
 import {
   FetchDataConfig,
   Filter,
@@ -163,6 +165,7 @@ export function useListViewState({
     gotoPage,
     setAllFilters,
     selectedFlatRows,
+    toggleAllRowsSelected,
     state: { pageIndex, pageSize, sortBy, filters },
   } = useTable(
     {
@@ -175,6 +178,7 @@ export function useListViewState({
       manualFilters: true,
       manualPagination: true,
       manualSortBy: true,
+      autoResetFilters: false,
       pageCount: Math.ceil(count / initialPageSize),
     },
     useFilters,
@@ -191,7 +195,7 @@ export function useListViewState({
   useEffect(() => {
     if (initialFilters.length) {
       setInternalFilters(
-        mergeCreateFilterValues(initialFilters, query.filters),
+        mergeCreateFilterValues(initialFilters, query.filters || []),
       );
     }
   }, [initialFilters]);
@@ -205,21 +209,22 @@ export function useListViewState({
       queryParams.sortColumn = sortBy[0].id;
       queryParams.sortOrder = sortBy[0].desc ? 'desc' : 'asc';
     }
-    setQuery(queryParams);
+
+    const method =
+      typeof query.pageIndex !== 'undefined' &&
+      queryParams.pageIndex !== query.pageIndex
+        ? 'push'
+        : 'replace';
+
+    setQuery(queryParams, method);
     fetchData({ pageIndex, pageSize, sortBy, filters });
   }, [fetchData, pageIndex, pageSize, sortBy, filters]);
 
-  const filtersApplied = internalFilters.every(
-    ({ id, value, operator }, index) =>
-      id &&
-      filters[index]?.id === id &&
-      filters[index]?.value === value &&
-      // @ts-ignore
-      filters[index]?.operator === operator,
-  );
-
-  const updateInternalFilter = (index: number, update: object) =>
-    setInternalFilters(updateInList(internalFilters, index, update));
+  useEffect(() => {
+    if (!isEqual(initialState.pageIndex, pageIndex)) {
+      gotoPage(initialState.pageIndex);
+    }
+  }, [query]);
 
   const applyFilterValue = (index: number, value: any) => {
     // skip redunundant updates
@@ -230,20 +235,12 @@ export function useListViewState({
     const updatedFilters = updateInList(internalFilters, index, update);
     setInternalFilters(updatedFilters);
     setAllFilters(convertFilters(updatedFilters));
-  };
-
-  const removeFilterAndApply = (index: number) => {
-    const updated = removeFromList(internalFilters, index);
-    setInternalFilters(updated);
-    setAllFilters(convertFilters(updated));
+    gotoPage(0); // clear pagination on filter
   };
 
   return {
-    applyFilters: () => setAllFilters(convertFilters(internalFilters)),
-    removeFilterAndApply,
     canNextPage,
     canPreviousPage,
-    filtersApplied,
     getTableBodyProps,
     getTableProps,
     gotoPage,
@@ -253,9 +250,25 @@ export function useListViewState({
     rows,
     selectedFlatRows,
     setAllFilters,
-    setInternalFilters,
     state: { pageIndex, pageSize, sortBy, filters, internalFilters },
-    updateInternalFilter,
+    toggleAllRowsSelected,
     applyFilterValue,
   };
 }
+
+export const filterSelectStyles: PartialStylesConfig = {
+  container: (provider, { getValue }) => ({
+    ...provider,
+    // dynamic width based on label string length
+    minWidth: `${Math.min(
+      12,
+      Math.max(5, 3 + getValue()[0].label.length / 2),
+    )}em`,
+  }),
+  control: provider => ({
+    ...provider,
+    borderWidth: 0,
+    boxShadow: 'none',
+    cursor: 'pointer',
+  }),
+};

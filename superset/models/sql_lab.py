@@ -17,8 +17,8 @@
 """A collection of ORM sqlalchemy models for SQL Lab"""
 import re
 from datetime import datetime
+from typing import Any, Dict
 
-# pylint: disable=ungrouped-imports
 import simplejson as json
 import sqlalchemy as sqla
 from flask import Markup
@@ -33,11 +33,13 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import backref, relationship
 
 from superset import security_manager
 from superset.models.helpers import AuditMixinNullable, ExtraJSONMixin
 from superset.models.tags import QueryUpdater
+from superset.sql_parse import CtasMethod
 from superset.utils.core import QueryStatus, user_label
 
 
@@ -70,6 +72,7 @@ class Query(Model, ExtraJSONMixin):
     limit = Column(Integer)
     select_as_cta = Column(Boolean)
     select_as_cta_used = Column(Boolean, default=False)
+    ctas_method = Column(String(16), default=CtasMethod.TABLE)
 
     progress = Column(Integer, default=0)  # 1..100
     # # of rows in the result set or rows modified.
@@ -99,7 +102,7 @@ class Query(Model, ExtraJSONMixin):
 
     __table_args__ = (sqla.Index("ti_user_id_changed_on", user_id, changed_on),)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "changedOn": self.changed_on,
             "changed_on": self.changed_on.isoformat(),
@@ -109,6 +112,7 @@ class Query(Model, ExtraJSONMixin):
             "errorMessage": self.error_message,
             "executedSql": self.executed_sql,
             "id": self.client_id,
+            "queryId": self.id,
             "limit": self.limit,
             "progress": self.progress,
             "rows": self.rows,
@@ -130,7 +134,7 @@ class Query(Model, ExtraJSONMixin):
         }
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Name property"""
         ts = datetime.now().isoformat()
         ts = ts.replace("-", "").replace(":", "").split(".")[0]
@@ -139,12 +143,21 @@ class Query(Model, ExtraJSONMixin):
         return f"sqllab_{tab}_{ts}"
 
     @property
-    def database_name(self):
+    def database_name(self) -> str:
         return self.database.name
 
     @property
-    def username(self):
+    def username(self) -> str:
         return self.user.username
+
+    def raise_for_access(self) -> None:
+        """
+        Raise an exception if the user cannot access the resource.
+
+        :raises SupersetSecurityException: If the user cannot access the resource
+        """
+
+        security_manager.raise_for_access(query=self)
 
 
 class SavedQuery(Model, AuditMixinNullable, ExtraJSONMixin):
@@ -170,7 +183,7 @@ class SavedQuery(Model, AuditMixinNullable, ExtraJSONMixin):
     )
 
     @property
-    def pop_tab_link(self):
+    def pop_tab_link(self) -> Markup:
         return Markup(
             f"""
             <a href="/superset/sqllab?savedQueryId={self.id}">
@@ -180,14 +193,14 @@ class SavedQuery(Model, AuditMixinNullable, ExtraJSONMixin):
         )
 
     @property
-    def user_email(self):
+    def user_email(self) -> str:
         return self.user.email
 
     @property
-    def sqlalchemy_uri(self):
+    def sqlalchemy_uri(self) -> URL:
         return self.database.sqlalchemy_uri
 
-    def url(self):
+    def url(self) -> str:
         return "/superset/sqllab?savedQueryId={0}".format(self.id)
 
 
@@ -226,7 +239,7 @@ class TabState(Model, AuditMixinNullable, ExtraJSONMixin):
     autorun = Column(Boolean, default=False)
     template_params = Column(Text)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -260,7 +273,7 @@ class TableSchema(Model, AuditMixinNullable, ExtraJSONMixin):
 
     expanded = Column(Boolean, default=False)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         try:
             description = json.loads(self.description)
         except json.JSONDecodeError:

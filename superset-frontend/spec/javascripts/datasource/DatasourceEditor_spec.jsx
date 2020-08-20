@@ -23,8 +23,8 @@ import configureStore from 'redux-mock-store';
 import fetchMock from 'fetch-mock';
 import thunk from 'redux-thunk';
 
-import DatasourceEditor from '../../../src/datasource/DatasourceEditor';
-import Field from '../../../src/CRUD/Field';
+import DatasourceEditor from 'src/datasource/DatasourceEditor';
+import Field from 'src/CRUD/Field';
 import mockDatasource from '../../fixtures/mockDatasource';
 
 const props = {
@@ -32,17 +32,6 @@ const props = {
   addSuccessToast: () => {},
   addDangerToast: () => {},
   onChange: () => {},
-};
-
-const extraColumn = {
-  column_name: 'new_column',
-  type: 'VARCHAR(10)',
-  description: null,
-  filterable: true,
-  verbose_name: null,
-  is_dttm: false,
-  expression: '',
-  groupby: true,
 };
 
 const DATASOURCE_ENDPOINT = 'glob:*/datasource/external_metadata/*';
@@ -67,37 +56,90 @@ describe('DatasourceEditor', () => {
   });
 
   it('renders Tabs', () => {
-    expect(wrapper.find(Tabs)).toHaveLength(1);
+    expect(wrapper.find(Tabs)).toExist();
   });
 
-  it('makes an async request', done => {
-    wrapper.setState({ activeTabKey: 2 });
-    const syncButton = wrapper.find('.sync-from-source');
-    expect(syncButton).toHaveLength(1);
-    syncButton.simulate('click');
+  it('makes an async request', () => {
+    return new Promise(done => {
+      wrapper.setState({ activeTabKey: 2 });
+      const syncButton = wrapper.find('.sync-from-source');
+      expect(syncButton).toHaveLength(1);
+      syncButton.simulate('click');
 
-    setTimeout(() => {
-      expect(fetchMock.calls(DATASOURCE_ENDPOINT)).toHaveLength(1);
-      fetchMock.reset();
-      done();
-    }, 0);
+      setTimeout(() => {
+        expect(fetchMock.calls(DATASOURCE_ENDPOINT)).toHaveLength(1);
+        fetchMock.reset();
+        done();
+      }, 0);
+    });
   });
 
-  it('merges columns', () => {
+  it('to add, remove and modify columns accordingly', () => {
+    const columns = [
+      {
+        name: 'ds',
+        type: 'DATETIME',
+        nullable: true,
+        default: '',
+        primary_key: false,
+      },
+      {
+        name: 'gender',
+        type: 'VARCHAR(32)',
+        nullable: true,
+        default: '',
+        primary_key: false,
+      },
+      {
+        name: 'new_column',
+        type: 'VARCHAR(10)',
+        nullable: true,
+        default: '',
+        primary_key: false,
+      },
+    ];
+
     const numCols = props.datasource.columns.length;
     expect(inst.state.databaseColumns).toHaveLength(numCols);
-    inst.mergeColumns([extraColumn]);
-    expect(inst.state.databaseColumns).toHaveLength(numCols + 1);
+    inst.updateColumns(columns);
+    expect(inst.state.databaseColumns).toEqual(
+      expect.arrayContaining([
+        {
+          type: 'DATETIME',
+          description: null,
+          filterable: false,
+          verbose_name: null,
+          is_dttm: true,
+          expression: '',
+          groupby: false,
+          column_name: 'ds',
+        },
+        {
+          type: 'VARCHAR(32)',
+          description: null,
+          filterable: true,
+          verbose_name: null,
+          is_dttm: false,
+          expression: '',
+          groupby: true,
+          column_name: 'gender',
+        },
+        expect.objectContaining({
+          column_name: 'new_column',
+          type: 'VARCHAR(10)',
+        }),
+      ]),
+    );
+    expect(inst.state.databaseColumns).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'name' })]),
+    );
   });
 
   it('renders isSqla fields', () => {
     wrapper.setState({ activeTabKey: 4 });
     expect(wrapper.state('isSqla')).toBe(true);
     expect(
-      wrapper
-        .find(Field)
-        .find({ fieldKey: 'fetch_values_predicate' })
-        .exists(),
+      wrapper.find(Field).find({ fieldKey: 'fetch_values_predicate' }).exists(),
     ).toBe(true);
   });
 });

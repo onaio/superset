@@ -22,15 +22,15 @@ import { mount, shallow } from 'enzyme';
 import sinon from 'sinon';
 import { Tabs as BootstrapTabs, Tab as BootstrapTab } from 'react-bootstrap';
 
-import DashboardComponent from '../../../../../src/dashboard/containers/DashboardComponent';
-import DeleteComponentButton from '../../../../../src/dashboard/components/DeleteComponentButton';
-import HoverMenu from '../../../../../src/dashboard/components/menu/HoverMenu';
-import DragDroppable from '../../../../../src/dashboard/components/dnd/DragDroppable';
-import Tabs from '../../../../../src/dashboard/components/gridComponents/Tabs';
+import DashboardComponent from 'src/dashboard/containers/DashboardComponent';
+import DeleteComponentButton from 'src/dashboard/components/DeleteComponentButton';
+import HoverMenu from 'src/dashboard/components/menu/HoverMenu';
+import DragDroppable from 'src/dashboard/components/dnd/DragDroppable';
+import Tabs from 'src/dashboard/components/gridComponents/Tabs';
+import { DASHBOARD_ROOT_ID } from 'src/dashboard/util/constants';
 import WithDragDropContext from '../../helpers/WithDragDropContext';
 import { dashboardLayoutWithTabs } from '../../fixtures/mockDashboardLayout';
 import { mockStoreWithTabs } from '../../fixtures/mockStore';
-import { DASHBOARD_ROOT_ID } from '../../../../../src/dashboard/util/constants';
 
 describe('Tabs', () => {
   const props = {
@@ -71,12 +71,12 @@ describe('Tabs', () => {
   it('should render a DragDroppable', () => {
     // test just Tabs with no children DragDroppables
     const wrapper = setup({ component: { ...props.component, children: [] } });
-    expect(wrapper.find(DragDroppable)).toHaveLength(1);
+    expect(wrapper.find(DragDroppable)).toExist();
   });
 
   it('should render BootstrapTabs', () => {
     const wrapper = setup();
-    expect(wrapper.find(BootstrapTabs)).toHaveLength(1);
+    expect(wrapper.find(BootstrapTabs)).toExist();
   });
 
   it('should set animation=true, mountOnEnter=true, and unmounOnExit=false on BootstrapTabs for perf', () => {
@@ -144,18 +144,18 @@ describe('Tabs', () => {
 
   it('should render a HoverMenu in editMode', () => {
     let wrapper = setup();
-    expect(wrapper.find(HoverMenu)).toHaveLength(0);
+    expect(wrapper.find(HoverMenu)).not.toExist();
 
     wrapper = setup({ editMode: true });
-    expect(wrapper.find(HoverMenu)).toHaveLength(1);
+    expect(wrapper.find(HoverMenu)).toExist();
   });
 
   it('should render a DeleteComponentButton in editMode', () => {
     let wrapper = setup();
-    expect(wrapper.find(DeleteComponentButton)).toHaveLength(0);
+    expect(wrapper.find(DeleteComponentButton)).not.toExist();
 
     wrapper = setup({ editMode: true });
-    expect(wrapper.find(DeleteComponentButton)).toHaveLength(1);
+    expect(wrapper.find(DeleteComponentButton)).toExist();
   });
 
   it('should call deleteComponent when deleted', () => {

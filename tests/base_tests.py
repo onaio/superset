@@ -18,7 +18,7 @@
 """Unit tests for Superset"""
 import imp
 import json
-from typing import Dict, Union
+from typing import Any, Dict, Union, List, Optional
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -27,7 +27,8 @@ from flask_appbuilder.security.sqla import models as ab_models
 from flask_testing import TestCase
 from sqlalchemy.orm import Session
 
-from tests.test_app import app  # isort:skip
+from tests.test_app import app
+from superset.sql_parse import CtasMethod
 from superset import db, security_manager
 from superset.connectors.base.models import BaseDatasource
 from superset.connectors.druid.models import DruidCluster, DruidDatasource
@@ -43,20 +44,63 @@ from superset.views.base_api import BaseSupersetModelRestApi
 FAKE_DB_NAME = "fake_db_100"
 
 
+def login(client: Any, username: str = "admin", password: str = "general"):
+    resp = get_resp(client, "/login/", data=dict(username=username, password=password))
+    assert "User confirmation needed" not in resp
+
+
+def get_resp(
+    client: Any,
+    url: str,
+    data: Any = None,
+    follow_redirects: bool = True,
+    raise_on_error: bool = True,
+    json_: Optional[str] = None,
+):
+    """Shortcut to get the parsed results while following redirects"""
+    if data:
+        resp = client.post(url, data=data, follow_redirects=follow_redirects)
+    elif json_:
+        resp = client.post(url, json=json_, follow_redirects=follow_redirects)
+    else:
+        resp = client.get(url, follow_redirects=follow_redirects)
+    if raise_on_error and resp.status_code > 400:
+        raise Exception("http request failed with code {}".format(resp.status_code))
+    return resp.data.decode("utf-8")
+
+
 class SupersetTestCase(TestCase):
 
     default_schema_backend_map = {
         "sqlite": "main",
         "mysql": "superset",
         "postgresql": "public",
+        "presto": "default",
     }
 
-    def __init__(self, *args, **kwargs):
-        super(SupersetTestCase, self).__init__(*args, **kwargs)
-        self.maxDiff = None
+    maxDiff = -1
 
     def create_app(self):
         return app
+
+    @staticmethod
+    def create_user_with_roles(username: str, roles: List[str]):
+        user_to_create = security_manager.find_user(username)
+        if not user_to_create:
+            security_manager.add_user(
+                username,
+                username,
+                username,
+                f"{username}@superset.com",
+                security_manager.find_role("Gamma"),  # it needs a role
+                password="general",
+            )
+            db.session.commit()
+            user_to_create = security_manager.find_user(username)
+            assert user_to_create
+        user_to_create.roles = [security_manager.find_role(r) for r in roles]
+        db.session.commit()
+        return user_to_create
 
     @staticmethod
     def create_user(
@@ -127,12 +171,14 @@ class SupersetTestCase(TestCase):
         return obj
 
     def login(self, username="admin", password="general"):
-        resp = self.get_resp("/login/", data=dict(username=username, password=password))
-        self.assertNotIn("User confirmation needed", resp)
+        return login(self.client, username, password)
 
-    def get_slice(self, slice_name: str, session: Session) -> Slice:
+    def get_slice(
+        self, slice_name: str, session: Session, expunge_from_session: bool = True
+    ) -> Slice:
         slc = session.query(Slice).filter_by(slice_name=slice_name).one()
-        session.expunge_all()
+        if expunge_from_session:
+            session.expunge_all()
         return slc
 
     @staticmethod
@@ -168,16 +214,7 @@ class SupersetTestCase(TestCase):
     def get_resp(
         self, url, data=None, follow_redirects=True, raise_on_error=True, json_=None
     ):
-        """Shortcut to get the parsed results while following redirects"""
-        if data:
-            resp = self.client.post(url, data=data, follow_redirects=follow_redirects)
-        elif json_:
-            resp = self.client.post(url, json=json_, follow_redirects=follow_redirects)
-        else:
-            resp = self.client.get(url, follow_redirects=follow_redirects)
-        if raise_on_error and resp.status_code > 400:
-            raise Exception("http request failed with code {}".format(resp.status_code))
-        return resp.data.decode("utf-8")
+        return get_resp(self.client, url, data, follow_redirects, raise_on_error, json_)
 
     def get_json_resp(
         self, url, data=None, follow_redirects=True, raise_on_error=True, json_=None
@@ -240,6 +277,8 @@ class SupersetTestCase(TestCase):
         sql_editor_id=None,
         select_as_cta=False,
         tmp_table_name=None,
+        schema=None,
+        ctas_method=CtasMethod.TABLE,
     ):
         if user_name:
             self.logout()
@@ -251,11 +290,14 @@ class SupersetTestCase(TestCase):
             "client_id": client_id,
             "queryLimit": query_limit,
             "sql_editor_id": sql_editor_id,
+            "ctas_method": ctas_method,
         }
         if tmp_table_name:
             json_payload["tmp_table_name"] = tmp_table_name
         if select_as_cta:
             json_payload["select_as_cta"] = select_as_cta
+        if schema:
+            json_payload["schema"] = schema
 
         resp = self.get_json_resp(
             "/superset/sql_json/", raise_on_error=False, json_=json_payload
@@ -376,7 +418,9 @@ class SupersetTestCase(TestCase):
             mock_method.assert_called_once_with("error", func_name)
         return rv
 
-    def post_assert_metric(self, uri: str, data: Dict, func_name: str) -> Response:
+    def post_assert_metric(
+        self, uri: str, data: Dict[str, Any], func_name: str
+    ) -> Response:
         """
         Simple client post with an extra assertion for statsd metrics
 
@@ -396,7 +440,9 @@ class SupersetTestCase(TestCase):
             mock_method.assert_called_once_with("error", func_name)
         return rv
 
-    def put_assert_metric(self, uri: str, data: Dict, func_name: str) -> Response:
+    def put_assert_metric(
+        self, uri: str, data: Dict[str, Any], func_name: str
+    ) -> Response:
         """
         Simple client put with an extra assertion for statsd metrics
 

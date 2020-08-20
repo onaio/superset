@@ -20,6 +20,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import PropTypes from 'prop-types';
+import styled from '@superset-ui/style';
 import { t } from '@superset-ui/translation';
 
 import { chartPropShape } from '../../dashboard/util/propShapes';
@@ -45,13 +46,42 @@ const propTypes = {
   addHistory: PropTypes.func,
   can_overwrite: PropTypes.bool.isRequired,
   can_download: PropTypes.bool.isRequired,
+  chartHeight: PropTypes.string.isRequired,
   isStarred: PropTypes.bool.isRequired,
   slice: PropTypes.object,
+  sliceName: PropTypes.string,
   table_name: PropTypes.string,
   form_data: PropTypes.object,
   timeout: PropTypes.number,
   chart: chartPropShape,
 };
+
+const StyledHeader = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  span[role='button'] {
+    display: flex;
+    height: 100%;
+  }
+
+  .right-button-panel {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: flex-end;
+
+    .btn-group {
+      flex: 0 0 auto;
+    }
+  }
+`;
+
+const StyledButtons = styled.span`
+  display: flex;
+  align-items: center;
+`;
 
 export class ExploreChartHeader extends React.PureComponent {
   constructor(props) {
@@ -63,6 +93,10 @@ export class ExploreChartHeader extends React.PureComponent {
     this.closePropertiesModal = this.closePropertiesModal.bind(this);
   }
 
+  getSliceName() {
+    return this.props.sliceName || t('%s - untitled', this.props.table_name);
+  }
+
   postChartFormData() {
     this.props.actions.postChartFormData(
       this.props.form_data,
@@ -70,40 +104,6 @@ export class ExploreChartHeader extends React.PureComponent {
       this.props.timeout,
       this.props.chart.id,
     );
-  }
-
-  updateChartTitleOrSaveSlice(newTitle) {
-    const isNewSlice = !this.props.slice;
-    const currentFormData = isNewSlice
-      ? this.props.form_data
-      : this.props.slice.form_data;
-
-    const params = {
-      slice_name: newTitle,
-      action: isNewSlice ? 'saveas' : 'overwrite',
-    };
-    // this.props.slice hold the original slice params stored in slices table
-    // when chart is saved or overwritten, the explore view will reload page
-    // to make sure sync with updated query params
-    this.props.actions.saveSlice(currentFormData, params).then(json => {
-      const { data } = json;
-      if (isNewSlice) {
-        this.props.actions.updateChartId(data.slice.slice_id, 0);
-        this.props.actions.createNewSlice(
-          data.can_add,
-          data.can_download,
-          data.can_overwrite,
-          data.slice,
-          data.form_data,
-        );
-        this.props.addHistory({
-          isReplace: true,
-          title: `[chart] ${data.slice.slice_name}`,
-        });
-      } else {
-        this.props.actions.updateChartTitle(newTitle);
-      }
-    });
   }
 
   openProperiesModal() {
@@ -116,16 +116,6 @@ export class ExploreChartHeader extends React.PureComponent {
     this.setState({
       isPropertiesModalOpen: false,
     });
-  }
-
-  renderChartTitle() {
-    let title;
-    if (this.props.slice) {
-      title = this.props.slice.slice_name;
-    } else {
-      title = t('%s - untitled', this.props.table_name);
-    }
-    return title;
   }
 
   render() {
@@ -141,20 +131,21 @@ export class ExploreChartHeader extends React.PureComponent {
       this.props.chart.chartStatus,
     );
     return (
-      <div id="slice-header" className="clearfix panel-title-large">
+      <StyledHeader id="slice-header" className="clearfix panel-title-large">
         <EditableTitle
-          title={this.renderChartTitle()}
+          title={this.getSliceName()}
           canEdit={!this.props.slice || this.props.can_overwrite}
-          onSaveTitle={this.updateChartTitleOrSaveSlice.bind(this)}
+          onSaveTitle={this.props.actions.updateChartTitle}
         />
 
         {this.props.slice && (
-          <span>
+          <StyledButtons>
             <FaveStar
               itemId={this.props.slice.slice_id}
               fetchFaveStar={this.props.actions.fetchFaveStar}
               saveFaveStar={this.props.actions.saveFaveStar}
               isStarred={this.props.isStarred}
+              showTooltip
             />
             <PropertiesModal
               show={this.state.isPropertiesModalOpen}
@@ -175,19 +166,20 @@ export class ExploreChartHeader extends React.PureComponent {
                 <i className="fa fa-edit" />
               </span>
             </TooltipWrapper>
-          </span>
+          </StyledButtons>
         )}
         {this.props.chart.sliceFormData && (
           <AlteredSliceTag
+            className="altered"
             origFormData={this.props.chart.sliceFormData}
             currentFormData={formData}
           />
         )}
-        <div className="pull-right">
+        <div className="right-button-panel">
           {chartFinished && queryResponse && (
             <RowCountLabel
-              rowcount={queryResponse.rowcount}
-              limit={formData.row_limit}
+              rowcount={Number(queryResponse.rowcount) || 0}
+              limit={Number(formData.row_limit) || 0}
             />
           )}
           {chartFinished && queryResponse && queryResponse.is_cached && (
@@ -201,18 +193,18 @@ export class ExploreChartHeader extends React.PureComponent {
             endTime={chartUpdateEndTime}
             isRunning={chartStatus === 'loading'}
             status={CHART_STATUS_MAP[chartStatus]}
-            style={{ fontSize: '10px', marginRight: '5px' }}
           />
           <ExploreActionButtons
             actions={this.props.actions}
             slice={this.props.slice}
             canDownload={this.props.can_download}
             chartStatus={chartStatus}
+            chartHeight={this.props.chartHeight}
             latestQueryFormData={latestQueryFormData}
             queryResponse={queryResponse}
           />
         </div>
-      </div>
+      </StyledHeader>
     );
   }
 }

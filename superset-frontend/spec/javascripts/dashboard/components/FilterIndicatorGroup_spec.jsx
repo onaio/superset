@@ -18,11 +18,11 @@
  */
 import React from 'react';
 import { shallow } from 'enzyme';
+import FilterIndicatorGroup from 'src/dashboard/components/FilterIndicatorGroup';
+import FilterBadgeIcon from 'src/components/FilterBadgeIcon';
 
 import { dashboardFilters } from '../fixtures/mockDashboardFilters';
 import { filterId, column } from '../fixtures/mockSliceEntities';
-import FilterIndicatorGroup from '../../../../src/dashboard/components/FilterIndicatorGroup';
-import FilterBadgeIcon from '../../../../src/components/FilterBadgeIcon';
 
 describe('FilterIndicatorGroup', () => {
   const mockedProps = {
@@ -45,6 +45,6 @@ describe('FilterIndicatorGroup', () => {
 
   it('should show indicator group with badge', () => {
     const wrapper = setup();
-    expect(wrapper.find(FilterBadgeIcon)).toHaveLength(1);
+    expect(wrapper.find(FilterBadgeIcon)).toExist();
   });
 });

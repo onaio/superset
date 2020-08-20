@@ -20,8 +20,8 @@ import React from 'react';
 import configureStore from 'redux-mock-store';
 import { shallow } from 'enzyme';
 
-import URLShortLinkModal from '../../../src/components/URLShortLinkModal';
-import ModalTrigger from '../../../src/components/ModalTrigger';
+import URLShortLinkModal from 'src/components/URLShortLinkModal';
+import ModalTrigger from 'src/components/ModalTrigger';
 
 describe('URLShortLinkModal', () => {
   const defaultProps = {
@@ -40,6 +40,6 @@ describe('URLShortLinkModal', () => {
 
   it('renders ModalTrigger', () => {
     const wrapper = setup();
-    expect(wrapper.find(ModalTrigger)).toHaveLength(1);
+    expect(wrapper.find(ModalTrigger)).toExist();
   });
 });

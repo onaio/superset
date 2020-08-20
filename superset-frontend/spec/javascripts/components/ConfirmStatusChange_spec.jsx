@@ -18,8 +18,10 @@
  */
 import React from 'react';
 import { mount } from 'enzyme';
-import { Modal, Button } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
+import { supersetTheme, ThemeProvider } from '@superset-ui/style';
 import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
+import Modal from 'src/components/Modal';
 
 describe('ConfirmStatusChange', () => {
   const mockedProps = {
@@ -35,25 +37,22 @@ describe('ConfirmStatusChange', () => {
         </>
       )}
     </ConfirmStatusChange>,
+    {
+      wrappingComponent: ThemeProvider,
+      wrappingComponentProps: { theme: supersetTheme },
+    },
   );
 
   it('opens a confirm modal', () => {
-    wrapper
-      .find('#btn1')
-      .props()
-      .onClick('foo');
+    wrapper.find('#btn1').props().onClick('foo');
 
     wrapper.update();
 
-    expect(wrapper.find(Modal).exists()).toBeTruthy();
+    expect(wrapper.find(Modal)).toExist();
   });
 
   it('calls the function on confirm', () => {
-    wrapper
-      .find(Button)
-      .last()
-      .props()
-      .onClick();
+    wrapper.find(Button).last().props().onClick();
 
     expect(mockedProps.onConfirm).toHaveBeenCalledWith('foo');
   });

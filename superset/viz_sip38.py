@@ -20,12 +20,13 @@
 These objects represent the backend of all the visualizations that
 Superset can render.
 """
+# mypy: ignore-errors
 import copy
+import dataclasses
 import hashlib
 import inspect
 import logging
 import math
-import pickle as pkl
 import re
 import uuid
 from collections import defaultdict, OrderedDict
@@ -47,9 +48,14 @@ from pandas.tseries.frequencies import to_offset
 
 from superset import app, cache, get_manifest_files, security_manager
 from superset.constants import NULL_STRING
-from superset.exceptions import NullValueException, SpatialException
+from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
+from superset.exceptions import (
+    NullValueException,
+    QueryObjectValidationError,
+    SpatialException,
+)
 from superset.models.helpers import QueryResult
-from superset.typing import VizData
+from superset.typing import QueryObjectDict, VizData, VizPayload
 from superset.utils import core as utils
 from superset.utils.core import (
     DTTM_ALIAS,
@@ -113,7 +119,7 @@ class BaseViz:
         force: bool = False,
     ):
         if not datasource:
-            raise Exception(_("Viz is missing a datasource"))
+            raise QueryObjectValidationError(_("Viz is missing a datasource"))
 
         self.datasource = datasource
         self.request = request
@@ -157,7 +163,7 @@ class BaseViz:
         self.status: Optional[str] = None
         self.error_msg = ""
         self.results: Optional[QueryResult] = None
-        self.error_message: Optional[str] = None
+        self.errors: List[Dict[str, Any]] = []
         self.force = force
         self.from_ddtm: Optional[datetime] = None
         self.to_dttm: Optional[datetime] = None
@@ -244,7 +250,7 @@ class BaseViz:
             df = df[min_periods:]
         return df
 
-    def get_samples(self):
+    def get_samples(self) -> List[Dict[str, Any]]:
         query_obj = self.query_obj()
         query_obj.update(
             {
@@ -275,7 +281,7 @@ class BaseViz:
         self.results = self.datasource.query(query_obj)
         self.query = self.results.query
         self.status = self.results.status
-        self.error_message = self.results.error_message
+        self.errors = self.results.errors
 
         df = self.results.df
         # Transform the timestamp we received from database to pandas supported
@@ -362,7 +368,9 @@ class BaseViz:
         from_dttm = None if since is None else (since - self.time_shift)
         to_dttm = None if until is None else (until - self.time_shift)
         if from_dttm and to_dttm and from_dttm > to_dttm:
-            raise Exception(_("From date cannot be larger than to date"))
+            raise QueryObjectValidationError(
+                _("From date cannot be larger than to date")
+            )
 
         self.from_dttm = from_dttm
         self.to_dttm = to_dttm
@@ -434,12 +442,16 @@ class BaseViz:
         cache_dict["time_range"] = self.form_data.get("time_range")
         cache_dict["datasource"] = self.datasource.uid
         cache_dict["extra_cache_keys"] = self.datasource.get_extra_cache_keys(query_obj)
-        cache_dict["rls"] = security_manager.get_rls_ids(self.datasource)
+        cache_dict["rls"] = (
+            security_manager.get_rls_ids(self.datasource)
+            if config["ENABLE_ROW_LEVEL_SECURITY"]
+            else []
+        )
         cache_dict["changed_on"] = self.datasource.changed_on
         json_data = self.json_dumps(cache_dict, sort_keys=True)
         return hashlib.md5(json_data.encode("utf-8")).hexdigest()
 
-    def get_payload(self, query_obj=None):
+    def get_payload(self, query_obj: Optional[QueryObjectDict] = None) -> VizPayload:
         """Returns a payload of metadata and data"""
         self.run_extra_queries()
         payload = self.get_df_payload(query_obj)
@@ -451,7 +463,9 @@ class BaseViz:
             del payload["df"]
         return payload
 
-    def get_df_payload(self, query_obj=None, **kwargs):
+    def get_df_payload(
+        self, query_obj: Optional[QueryObjectDict] = None, **kwargs: Any
+    ) -> Dict[str, Any]:
         """Handles caching around the df payload retrieval"""
         if not query_obj:
             query_obj = self.query_obj()
@@ -466,7 +480,6 @@ class BaseViz:
             if cache_value:
                 stats_logger.incr("loading_from_cache")
                 try:
-                    cache_value = pkl.loads(cache_value)
                     df = cache_value["df"]
                     self.query = cache_value["query"]
                     self._any_cached_dttm = cache_value["dttm"]
@@ -491,8 +504,14 @@ class BaseViz:
                     is_loaded = True
             except Exception as ex:
                 logger.exception(ex)
-                if not self.error_message:
-                    self.error_message = "{}".format(ex)
+                error = dataclasses.asdict(
+                    SupersetError(
+                        message=str(ex),
+                        level=ErrorLevel.ERROR,
+                        error_type=SupersetErrorType.VIZ_GET_DF_ERROR,
+                    )
+                )
+                self.errors.append(error)
                 self.status = utils.QueryStatus.FAILED
                 stacktrace = utils.get_stacktrace()
 
@@ -504,12 +523,6 @@ class BaseViz:
             ):
                 try:
                     cache_value = dict(dttm=cached_dttm, df=df, query=self.query)
-                    cache_value = pkl.dumps(cache_value, protocol=pkl.HIGHEST_PROTOCOL)
-
-                    logger.info(
-                        "Caching {} chars at key {}".format(len(cache_value), cache_key)
-                    )
-
                     stats_logger.incr("set_cache_key")
                     cache.set(cache_key, cache_value, timeout=self.cache_timeout)
                 except Exception as ex:
@@ -524,7 +537,7 @@ class BaseViz:
             "cached_dttm": self._any_cached_dttm,
             "cache_timeout": self.cache_timeout,
             "df": df,
-            "error": self.error_message,
+            "errors": self.errors,
             "form_data": self.form_data,
             "is_cached": self._any_cache_key is not None,
             "query": self.query,
@@ -540,10 +553,11 @@ class BaseViz:
             obj, default=utils.json_int_dttm_ser, ignore_nan=True, sort_keys=sort_keys
         )
 
-    def payload_json_and_has_error(self, payload):
+    def payload_json_and_has_error(self, payload: VizPayload) -> Tuple[str, bool]:
         has_error = (
             payload.get("status") == utils.QueryStatus.FAILED
             or payload.get("error") is not None
+            or len(payload.get("errors", [])) > 0
         )
         return self.json_dumps(payload), has_error
 
@@ -558,7 +572,7 @@ class BaseViz:
         }
         return content
 
-    def get_csv(self):
+    def get_csv(self) -> Optional[str]:
         df = self.get_df()
         include_index = not isinstance(df.index, pd.RangeIndex)
         return df.to_csv(index=include_index, **config["CSV_EXPORT"])
@@ -569,6 +583,15 @@ class BaseViz:
     @property
     def json_data(self):
         return json.dumps(self.data)
+
+    def raise_for_access(self) -> None:
+        """
+        Raise an exception if the user cannot access the resource.
+
+        :raises SupersetSecurityException: If the user cannot access the resource
+        """
+
+        security_manager.raise_for_access(viz=self)
 
 
 class TableViz(BaseViz):
@@ -588,10 +611,10 @@ class TableViz(BaseViz):
             fd.get("granularity_sqla") and fd.get("time_grain_sqla")
         )
         if fd.get("include_time") and not conditions_met:
-            raise Exception(
+            raise QueryObjectValidationError(
                 _("Pick a granularity in the Time section or " "uncheck 'Include Time'")
             )
-        return fd.get("include_time")
+        return bool(fd.get("include_time"))
 
     def query_obj(self):
         d = super().query_obj()
@@ -600,7 +623,7 @@ class TableViz(BaseViz):
         if fd.get("all_columns") and (
             fd.get("groupby") or fd.get("metrics") or fd.get("percent_metrics")
         ):
-            raise Exception(
+            raise QueryObjectValidationError(
                 _(
                     "Choose either fields to [Group By] and [Metrics] and/or "
                     "[Percentage Metrics], or [Columns], not both"
@@ -657,12 +680,6 @@ class TableViz(BaseViz):
             utils.get_metric_names(self.form_data.get("metrics") or [])
         )
 
-        timeseries_limit_metric = utils.get_metric_name(
-            self.form_data.get("timeseries_limit_metric")
-        )
-        if timeseries_limit_metric:
-            non_percent_metric_columns.append(timeseries_limit_metric)
-
         percent_metric_columns = utils.get_metric_names(
             self.form_data.get("percent_metrics") or []
         )
@@ -706,10 +723,10 @@ class TimeTableViz(BaseViz):
         fd = self.form_data
 
         if not fd.get("metrics"):
-            raise Exception(_("Pick at least one metric"))
+            raise QueryObjectValidationError(_("Pick at least one metric"))
 
         if fd.get("groupby") and len(fd.get("metrics")) > 1:
-            raise Exception(
+            raise QueryObjectValidationError(
                 _("When using 'Group By' you are limited to use a single metric")
             )
         return d
@@ -754,9 +771,11 @@ class PivotTableViz(BaseViz):
         if not groupby:
             groupby = []
         if not groupby:
-            raise Exception(_("Please choose at least one 'Group by' field "))
+            raise QueryObjectValidationError(
+                _("Please choose at least one 'Group by' field ")
+            )
         if transpose and not columns:
-            raise Exception(
+            raise QueryObjectValidationError(
                 _(
                     (
                         "Please choose at least one 'Columns' field when "
@@ -765,9 +784,9 @@ class PivotTableViz(BaseViz):
                 )
             )
         if not metrics:
-            raise Exception(_("Please choose at least one metric"))
+            raise QueryObjectValidationError(_("Please choose at least one metric"))
         if set(groupby) & set(columns):
-            raise Exception(_("Group By' and 'Columns' can't overlap"))
+            raise QueryObjectValidationError(_("Group By' and 'Columns' can't overlap"))
         return d
 
     def get_data(self, df: pd.DataFrame) -> VizData:
@@ -812,49 +831,6 @@ class PivotTableViz(BaseViz):
                 ).split(" "),
             ),
         )
-
-
-class MarkupViz(BaseViz):
-
-    """Use html or markdown to create a free form widget"""
-
-    viz_type = "markup"
-    verbose_name = _("Markup")
-    is_timeseries = False
-
-    def query_obj(self):
-        return None
-
-    def get_df(self, query_obj: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
-        return pd.DataFrame()
-
-    def get_data(self, df: pd.DataFrame) -> VizData:
-        markup_type = self.form_data.get("markup_type")
-        code = self.form_data.get("code", "")
-        if markup_type == "markdown":
-            code = markdown(code)
-        return dict(html=code, theme_css=get_manifest_files("theme", "css"))
-
-
-class SeparatorViz(MarkupViz):
-
-    """Use to create section headers in a dashboard, similar to `Markup`"""
-
-    viz_type = "separator"
-    verbose_name = _("Separator")
-
-
-class WordCloudViz(BaseViz):
-
-    """Build a colorful word cloud
-
-    Uses the nice library at:
-    https://github.com/jasondavies/d3-cloud
-    """
-
-    viz_type = "word_cloud"
-    verbose_name = _("Word Cloud")
-    is_timeseries = False
 
 
 class TreemapViz(BaseViz):
@@ -920,7 +896,9 @@ class CalHeatmapViz(BaseViz):
             until=form_data.get("until"),
         )
         if not start or not end:
-            raise Exception("Please provide both time bounds (Since and Until)")
+            raise QueryObjectValidationError(
+                "Please provide both time bounds (Since and Until)"
+            )
         domain = form_data.get("domain_granularity")
         diff_delta = rdelta.relativedelta(end, start)
         diff_secs = (end - start).total_seconds()
@@ -1060,18 +1038,18 @@ class BubbleViz(NVD3Viz):
         form_data = self.form_data
         d = super().query_obj()
 
-        self.x_metric = form_data.get("x")
-        self.y_metric = form_data.get("y")
-        self.z_metric = form_data.get("size")
+        self.x_metric = form_data["x"]
+        self.y_metric = form_data["y"]
+        self.z_metric = form_data["size"]
         self.entity = form_data.get("entity")
         self.series = form_data.get("series") or self.entity
         d["row_limit"] = form_data.get("limit")
 
         d["metrics"] = [self.z_metric, self.x_metric, self.y_metric]
         if len(set(self.metric_labels)) < 3:
-            raise Exception(_("Please use 3 different metric labels"))
+            raise QueryObjectValidationError(_("Please use 3 different metric labels"))
         if not all(d["metrics"] + [self.entity]):
-            raise Exception(_("Pick a metric for x, y and size"))
+            raise QueryObjectValidationError(_("Pick a metric for x, y and size"))
         return d
 
     def get_data(self, df: pd.DataFrame) -> VizData:
@@ -1106,23 +1084,9 @@ class BulletViz(NVD3Viz):
         d = super().query_obj()
         self.metric = form_data.get("metric")
 
-        def as_strings(field):
-            value = form_data.get(field)
-            return value.split(",") if value else []
-
-        def as_floats(field):
-            return [float(x) for x in as_strings(field)]
-
-        self.ranges = as_floats("ranges")
-        self.range_labels = as_strings("range_labels")
-        self.markers = as_floats("markers")
-        self.marker_labels = as_strings("marker_labels")
-        self.marker_lines = as_floats("marker_lines")
-        self.marker_line_labels = as_strings("marker_line_labels")
-
         d["metrics"] = [self.metric]
         if not self.metric:
-            raise Exception(_("Pick a metric to display"))
+            raise QueryObjectValidationError(_("Pick a metric to display"))
         return d
 
     def get_data(self, df: pd.DataFrame) -> VizData:
@@ -1130,12 +1094,6 @@ class BulletViz(NVD3Viz):
         values = df["metric"].values
         return {
             "measures": values.tolist(),
-            "ranges": self.ranges or [0, values.max() * 1.1],
-            "rangeLabels": self.range_labels or None,
-            "markers": self.markers or None,
-            "markerLabels": self.marker_labels or None,
-            "markerLines": self.marker_lines or None,
-            "markerLineLabels": self.marker_line_labels or None,
         }
 
 
@@ -1152,7 +1110,7 @@ class BigNumberViz(BaseViz):
         d = super().query_obj()
         metric = self.form_data.get("metric")
         if not metric:
-            raise Exception(_("Pick a metric!"))
+            raise QueryObjectValidationError(_("Pick a metric!"))
         d["metrics"] = [self.form_data.get("metric")]
         self.form_data["metric"] = metric
         return d
@@ -1183,7 +1141,7 @@ class BigNumberTotalViz(BaseViz):
         d = super().query_obj()
         metric = self.form_data.get("metric")
         if not metric:
-            raise Exception(_("Pick a metric!"))
+            raise QueryObjectValidationError(_("Pick a metric!"))
         d["metrics"] = [self.form_data.get("metric")]
         self.form_data["metric"] = metric
 
@@ -1261,7 +1219,9 @@ class NVD3TimeSeriesViz(NVD3Viz):
     def process_data(self, df: pd.DataFrame, aggregate: bool = False) -> VizData:
         fd = self.form_data
         if fd.get("granularity") == "all":
-            raise Exception(_("Pick a time granularity for your time series"))
+            raise QueryObjectValidationError(
+                _("Pick a time granularity for your time series")
+            )
 
         if df.empty:
             return df
@@ -1315,7 +1275,7 @@ class NVD3TimeSeriesViz(NVD3Viz):
             query_object["inner_to_dttm"] = query_object["to_dttm"]
 
             if not query_object["from_dttm"] or not query_object["to_dttm"]:
-                raise Exception(
+                raise QueryObjectValidationError(
                     _(
                         "`Since` and `Until` time bounds should be specified "
                         "when using the `Time Shift` feature."
@@ -1363,7 +1323,7 @@ class NVD3TimeSeriesViz(NVD3Viz):
                 elif comparison_type == "ratio":
                     diff = df / df2
                 else:
-                    raise Exception(
+                    raise QueryObjectValidationError(
                         "Invalid `comparison_type`: {0}".format(comparison_type)
                     )
 
@@ -1396,8 +1356,8 @@ class MultiLineViz(NVD3Viz):
     def get_data(self, df: pd.DataFrame) -> VizData:
         fd = self.form_data
         # Late imports to avoid circular import issues
-        from superset.models.slice import Slice
         from superset import db
+        from superset.models.slice import Slice
 
         slice_ids1 = fd.get("line_charts")
         slices1 = db.session.query(Slice).filter(Slice.id.in_(slice_ids1)).all()
@@ -1426,11 +1386,11 @@ class NVD3DualLineViz(NVD3Viz):
         m2 = self.form_data.get("metric_2")
         d["metrics"] = [m1, m2]
         if not m1:
-            raise Exception(_("Pick a metric for left axis!"))
+            raise QueryObjectValidationError(_("Pick a metric for left axis!"))
         if not m2:
-            raise Exception(_("Pick a metric for right axis!"))
+            raise QueryObjectValidationError(_("Pick a metric for right axis!"))
         if m1 == m2:
-            raise Exception(
+            raise QueryObjectValidationError(
                 _("Please choose different metrics" " on left and right axis")
             )
         return d
@@ -1473,10 +1433,12 @@ class NVD3DualLineViz(NVD3Viz):
         fd = self.form_data
 
         if self.form_data.get("granularity") == "all":
-            raise Exception(_("Pick a time granularity for your time series"))
+            raise QueryObjectValidationError(
+                _("Pick a time granularity for your time series")
+            )
 
-        metric = utils.get_metric_name(fd.get("metric"))
-        metric_2 = utils.get_metric_name(fd.get("metric_2"))
+        metric = utils.get_metric_name(fd["metric"])
+        metric_2 = utils.get_metric_name(fd["metric_2"])
         df = df.pivot_table(index=DTTM_ALIAS, values=[metric, metric_2])
 
         chart_data = self.to_series(df)
@@ -1531,7 +1493,7 @@ class NVD3TimePivotViz(NVD3TimeSeriesViz):
         df = df.pivot_table(
             index=DTTM_ALIAS,
             columns="series",
-            values=utils.get_metric_name(fd.get("metric")),
+            values=utils.get_metric_name(fd["metric"]),
         )
         chart_data = self.to_series(df)
         for serie in chart_data:
@@ -1590,7 +1552,9 @@ class HistogramViz(BaseViz):
         d = super().query_obj()
         d["row_limit"] = self.form_data.get("row_limit", int(config["VIZ_ROW_LIMIT"]))
         if not self.form_data.get("all_columns_x"):
-            raise Exception(_("Must have at least one numeric column specified"))
+            raise QueryObjectValidationError(
+                _("Must have at least one numeric column specified")
+            )
         return d
 
     def labelify(self, keys, column):
@@ -1642,9 +1606,9 @@ class DistributionBarViz(DistributionPieViz):
         d = super().query_obj()
         fd = self.form_data
         if not self.all_metrics:
-            raise Exception(_("Pick at least one metric"))
+            raise QueryObjectValidationError(_("Pick at least one metric"))
         if not self.columns:
-            raise Exception(_("Pick at least one field for [Series]"))
+            raise QueryObjectValidationError(_("Pick at least one field for [Series]"))
         return d
 
     def get_data(self, df: pd.DataFrame) -> VizData:
@@ -1707,8 +1671,12 @@ class SunburstViz(BaseViz):
         fd = self.form_data
         cols = fd.get("groupby") or []
         cols.extend(["m1", "m2"])
-        metric = utils.get_metric_name(fd.get("metric"))
-        secondary_metric = utils.get_metric_name(fd.get("secondary_metric"))
+        metric = utils.get_metric_name(fd["metric"])
+        secondary_metric = (
+            utils.get_metric_name(fd["secondary_metric"])
+            if "secondary_metric" in fd
+            else None
+        )
         if metric == secondary_metric or secondary_metric is None:
             df.rename(columns={df.columns[-1]: "m1"}, inplace=True)
             df["m2"] = df["m1"]
@@ -1768,7 +1736,7 @@ class SankeyViz(BaseViz):
 
         cycle = find_cycle(hierarchy)
         if cycle:
-            raise Exception(
+            raise QueryObjectValidationError(
                 _(
                     "There's a loop in your Sankey, please provide a tree. "
                     "Here's a faulty link: {}"
@@ -1789,7 +1757,7 @@ class DirectedForceViz(BaseViz):
     def query_obj(self):
         qry = super().query_obj()
         if len(self.form_data["groupby"]) != 2:
-            raise Exception(_("Pick exactly 2 columns to 'Group By'"))
+            raise QueryObjectValidationError(_("Pick exactly 2 columns to 'Group By'"))
         qry["metrics"] = [self.form_data["metric"]]
         return qry
 
@@ -1865,8 +1833,12 @@ class WorldMapViz(BaseViz):
 
         fd = self.form_data
         cols = [fd.get("entity")]
-        metric = utils.get_metric_name(fd.get("metric"))
-        secondary_metric = utils.get_metric_name(fd.get("secondary_metric"))
+        metric = utils.get_metric_name(fd["metric"])
+        secondary_metric = (
+            utils.get_metric_name(fd["secondary_metric"])
+            if "secondary_metric" in fd
+            else None
+        )
         columns = ["country", "m1", "m2"]
         if metric == secondary_metric:
             ndf = df[cols]
@@ -1919,7 +1891,7 @@ class FilterBoxViz(BaseViz):
         for flt in filters:
             col = flt.get("column")
             if not col:
-                raise Exception(
+                raise QueryObjectValidationError(
                     _("Invalid filter configuration, please select a column")
                 )
             qry["columns"] = [col]
@@ -2069,12 +2041,14 @@ class MapboxViz(BaseViz):
 
         if not fd.get("groupby"):
             if fd.get("all_columns_x") is None or fd.get("all_columns_y") is None:
-                raise Exception(_("[Longitude] and [Latitude] must be set"))
+                raise QueryObjectValidationError(
+                    _("[Longitude] and [Latitude] must be set")
+                )
             d["columns"] = [fd.get("all_columns_x"), fd.get("all_columns_y")]
 
             if label_col and len(label_col) >= 1:
                 if label_col[0] == "count":
-                    raise Exception(
+                    raise QueryObjectValidationError(
                         _(
                             "Must have a [Group By] column to have 'count' as the "
                             + "[Label]"
@@ -2094,19 +2068,21 @@ class MapboxViz(BaseViz):
                 and label_col[0] != "count"
                 and label_col[0] not in fd.get("groupby")
             ):
-                raise Exception(_("Choice of [Label] must be present in [Group By]"))
+                raise QueryObjectValidationError(
+                    _("Choice of [Label] must be present in [Group By]")
+                )
 
             if fd.get("point_radius") != "Auto" and fd.get(
                 "point_radius"
             ) not in fd.get("groupby"):
-                raise Exception(
+                raise QueryObjectValidationError(
                     _("Choice of [Point Radius] must be present in [Group By]")
                 )
 
             if fd.get("all_columns_x") not in fd.get("groupby") or fd.get(
                 "all_columns_y"
             ) not in fd.get("groupby"):
-                raise Exception(
+                raise QueryObjectValidationError(
                     _(
                         "[Longitude] and [Latitude] columns must be present in "
                         + "[Group By]"
@@ -2198,8 +2174,8 @@ class DeckGLMultiLayer(BaseViz):
     def get_data(self, df: pd.DataFrame) -> VizData:
         fd = self.form_data
         # Late imports to avoid circular import issues
-        from superset.models.slice import Slice
         from superset import db
+        from superset.models.slice import Slice
 
         slice_ids = fd.get("deck_slices")
         slices = db.session.query(Slice).filter(Slice.id.in_(slice_ids)).all()
@@ -2847,6 +2823,6 @@ viz_types = {
     if (
         inspect.isclass(o)
         and issubclass(o, BaseViz)
-        and o.viz_type not in config["VIZ_TYPE_BLACKLIST"]
+        and o.viz_type not in config["VIZ_TYPE_DENYLIST"]
     )
 }

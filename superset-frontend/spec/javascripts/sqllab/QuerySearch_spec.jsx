@@ -17,12 +17,12 @@
  * under the License.
  */
 import React from 'react';
-import Select from 'react-select';
 import { Button } from 'react-bootstrap';
 import { shallow } from 'enzyme';
 import sinon from 'sinon';
 
-import QuerySearch from '../../../src/SqlLab/components/QuerySearch';
+import Select from 'src/components/Select';
+import QuerySearch from 'src/SqlLab/components/QuerySearch';
 
 describe('QuerySearch', () => {
   const search = sinon.spy(QuerySearch.prototype, 'refreshQueries');
@@ -39,7 +39,7 @@ describe('QuerySearch', () => {
   });
 
   it('should have three Select', () => {
-    expect(wrapper.find(Select)).toHaveLength(3);
+    expect(wrapper.findWhere(x => x.type() === Select)).toHaveLength(3);
   });
 
   it('updates fromTime on user selects from time', () => {
@@ -60,7 +60,7 @@ describe('QuerySearch', () => {
   });
 
   it('should have one input for searchText', () => {
-    expect(wrapper.find('input')).toHaveLength(1);
+    expect(wrapper.find('input')).toExist();
   });
 
   it('updates search text on user inputs search text', () => {
@@ -77,7 +77,7 @@ describe('QuerySearch', () => {
   });
 
   it('should have one Button', () => {
-    expect(wrapper.find(Button)).toHaveLength(1);
+    expect(wrapper.find(Button)).toExist();
   });
 
   it('refreshes queries when clicked', () => {

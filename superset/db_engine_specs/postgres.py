@@ -20,11 +20,12 @@ from typing import Any, List, Optional, Tuple, TYPE_CHECKING
 from pytz import _FixedOffset  # type: ignore
 from sqlalchemy.dialects.postgresql.base import PGInspector
 
-from superset.db_engine_specs.base import BaseEngineSpec, LimitMethod
+from superset.db_engine_specs.base import BaseEngineSpec
+from superset.utils import core as utils
 
 if TYPE_CHECKING:
-    # prevent circular imports
-    from superset.models.core import Database  # pylint: disable=unused-import
+    # pylint: disable=unused-import
+    from superset.models.core import Database  # pragma: no cover
 
 
 # Replace psycopg2.tz.FixedOffsetTimezone with pytz, which is serializable by PyArrow
@@ -37,6 +38,7 @@ class PostgresBaseEngineSpec(BaseEngineSpec):
     """ Abstract class for Postgres 'like' databases """
 
     engine = ""
+    engine_name = "PostgreSQL"
 
     _time_grain_expressions = {
         None: "{col}",
@@ -51,13 +53,11 @@ class PostgresBaseEngineSpec(BaseEngineSpec):
     }
 
     @classmethod
-    def fetch_data(cls, cursor: Any, limit: int) -> List[Tuple]:
+    def fetch_data(cls, cursor: Any, limit: int) -> List[Tuple[Any, ...]]:
         cursor.tzinfo_factory = FixedOffsetTimezone
         if not cursor.description:
             return []
-        if cls.limit_method == LimitMethod.FETCH_MANY:
-            return cursor.fetchmany(limit)
-        return cursor.fetchall()
+        return super().fetch_data(cursor, limit)
 
     @classmethod
     def epoch_to_dttm(cls) -> str:
@@ -81,8 +81,8 @@ class PostgresEngineSpec(PostgresBaseEngineSpec):
     @classmethod
     def convert_dttm(cls, target_type: str, dttm: datetime) -> Optional[str]:
         tt = target_type.upper()
-        if tt == "DATE":
+        if tt == utils.TemporalType.DATE:
             return f"TO_DATE('{dttm.date().isoformat()}', 'YYYY-MM-DD')"
-        if tt == "TIMESTAMP":
+        if tt == utils.TemporalType.TIMESTAMP:
             return f"""TO_TIMESTAMP('{dttm.isoformat(sep=" ", timespec="microseconds")}', 'YYYY-MM-DD HH24:MI:SS.US')"""  # pylint: disable=line-too-long
         return None

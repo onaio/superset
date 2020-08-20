@@ -19,11 +19,10 @@ from superset.security.analytics_db_safety import (
     check_sqlalchemy_uri,
     DBSecurityException,
 )
+from tests.base_tests import SupersetTestCase
 
-from ..base_tests import SupersetTestCase
 
-
-class DBConnectionsTest(SupersetTestCase):
+class TestDBConnections(SupersetTestCase):
     def test_check_sqlalchemy_uri_ok(self):
         check_sqlalchemy_uri("postgres://user:password@test.com")
 

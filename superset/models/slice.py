@@ -24,7 +24,9 @@ from flask_appbuilder import Model
 from flask_appbuilder.models.decorators import renders
 from markupsafe import escape, Markup
 from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text
+from sqlalchemy.engine.base import Connection
 from sqlalchemy.orm import make_transient, relationship
+from sqlalchemy.orm.mapper import Mapper
 
 from superset import ConnectorRegistry, db, is_feature_enabled, security_manager
 from superset.legacy import update_time_range
@@ -32,9 +34,10 @@ from superset.models.helpers import AuditMixinNullable, ImportMixin
 from superset.models.tags import ChartUpdater
 from superset.tasks.thumbnails import cache_chart_thumbnail
 from superset.utils import core as utils
+from superset.utils.urls import get_url_path
 
 if is_feature_enabled("SIP_38_VIZ_REARCHITECTURE"):
-    from superset.viz_sip38 import BaseViz, viz_types  # type: ignore
+    from superset.viz_sip38 import BaseViz, viz_types
 else:
     from superset.viz import BaseViz, viz_types  # type: ignore
 
@@ -72,6 +75,15 @@ class Slice(
     perm = Column(String(1000))
     schema_perm = Column(String(1000))
     owners = relationship(security_manager.user_model, secondary=slice_user)
+    table = relationship(
+        "SqlaTable",
+        foreign_keys=[datasource_id],
+        primaryjoin="and_(Slice.datasource_id == SqlaTable.id, "
+        "Slice.datasource_type == 'table')",
+        remote_side="SqlaTable.id",
+        lazy="joined",
+    )
+
     token = ""
 
     export_fields = [
@@ -83,7 +95,7 @@ class Slice(
         "cache_timeout",
     ]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.slice_name or str(self.id)
 
     @property
@@ -121,11 +133,15 @@ class Slice(
     @renders("datasource_url")
     def datasource_url(self) -> Optional[str]:
         # pylint: disable=no-member
+        if self.table:
+            return self.table.explore_url
         datasource = self.datasource
         return datasource.explore_url if datasource else None
 
     def datasource_name_text(self) -> Optional[str]:
         # pylint: disable=no-member
+        if self.table:
+            return self.table.table_name
         datasource = self.datasource
         return datasource.name if datasource else None
 
@@ -139,10 +155,12 @@ class Slice(
 
     @property  # type: ignore
     @utils.memoized
-    def viz(self) -> BaseViz:
+    def viz(self) -> Optional[BaseViz]:
         form_data = json.loads(self.params)
-        viz_class = viz_types[self.viz_type]
-        return viz_class(datasource=self.datasource, form_data=form_data)
+        viz_class = viz_types.get(self.viz_type)
+        if viz_class:
+            return viz_class(datasource=self.datasource, form_data=form_data)
+        return None
 
     @property
     def description_markeddown(self) -> str:
@@ -154,24 +172,28 @@ class Slice(
         data: Dict[str, Any] = {}
         self.token = ""
         try:
-            data = self.viz.data
-            self.token = data.get("token")  # type: ignore
+            viz = self.viz
+            data = viz.data if viz else self.form_data
+            self.token = utils.get_form_data_token(data)
         except Exception as ex:  # pylint: disable=broad-except
             logger.exception(ex)
             data["error"] = str(ex)
         return {
             "cache_timeout": self.cache_timeout,
+            "changed_on": self.changed_on.isoformat(),
+            "changed_on_humanized": self.changed_on_humanized,
             "datasource": self.datasource_name,
             "description": self.description,
             "description_markeddown": self.description_markeddown,
             "edit_url": self.edit_url,
             "form_data": self.form_data,
+            "modified": self.modified(),
+            "owners": [
+                f"{owner.first_name} {owner.last_name}" for owner in self.owners
+            ],
             "slice_id": self.id,
             "slice_name": self.slice_name,
             "slice_url": self.slice_url,
-            "modified": self.modified(),
-            "changed_on_humanized": self.changed_on_humanized,
-            "changed_on": self.changed_on.isoformat(),
         }
 
     @property
@@ -250,7 +272,7 @@ class Slice(
 
     @property
     def changed_by_url(self) -> str:
-        return f"/superset/profile/{self.created_by.username}"
+        return f"/superset/profile/{self.changed_by.username}"  # type: ignore
 
     @property
     def icons(self) -> str:
@@ -311,7 +333,7 @@ class Slice(
         return f"/superset/explore/?form_data=%7B%22slice_id%22%3A%20{self.id}%7D"
 
 
-def set_related_perm(mapper, connection, target):
+def set_related_perm(mapper: Mapper, connection: Connection, target: Slice) -> None:
     # pylint: disable=unused-argument
     src_class = target.cls_model
     id_ = target.datasource_id
@@ -323,9 +345,10 @@ def set_related_perm(mapper, connection, target):
 
 
 def event_after_chart_changed(  # pylint: disable=unused-argument
-    mapper, connection, target
-):
-    cache_chart_thumbnail.delay(target.id, force=True)
+    mapper: Mapper, connection: Connection, target: Slice
+) -> None:
+    url = get_url_path("Superset.slice", slice_id=target.id, standalone="true")
+    cache_chart_thumbnail.delay(url, target.digest, force=True)
 
 
 sqla.event.listen(Slice, "before_insert", set_related_perm)

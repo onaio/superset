@@ -21,7 +21,7 @@ import sinon from 'sinon';
 import { shallow } from 'enzyme';
 import { Modal } from 'react-bootstrap';
 import { getChartMetadataRegistry, ChartMetadata } from '@superset-ui/chart';
-import VizTypeControl from '../../../../src/explore/components/controls/VizTypeControl';
+import VizTypeControl from 'src/explore/components/controls/VizTypeControl';
 
 const defaultProps = {
   name: 'viz_type',
@@ -55,7 +55,7 @@ describe('VizTypeControl', () => {
   });
 
   it('renders a Modal', () => {
-    expect(wrapper.find(Modal)).toHaveLength(1);
+    expect(wrapper.find(Modal)).toExist();
   });
 
   it('calls onChange when toggled', () => {
@@ -66,6 +66,6 @@ describe('VizTypeControl', () => {
   it('filters images based on text input', () => {
     expect(wrapper.find('img')).toHaveLength(2);
     wrapper.setState({ filter: 'vis2' });
-    expect(wrapper.find('img')).toHaveLength(1);
+    expect(wrapper.find('img')).toExist();
   });
 });

@@ -26,8 +26,8 @@ import {
   getCategoricalSchemeRegistry,
 } from '@superset-ui/color';
 
-import ColorPickerControl from '../../../../src/explore/components/controls/ColorPickerControl';
-import ControlHeader from '../../../../src/explore/components/ControlHeader';
+import ColorPickerControl from 'src/explore/components/controls/ColorPickerControl';
+import ControlHeader from 'src/explore/components/ControlHeader';
 
 const defaultProps = {
   value: {},
@@ -53,7 +53,7 @@ describe('ColorPickerControl', () => {
   it('renders a OverlayTrigger', () => {
     const controlHeader = wrapper.find(ControlHeader);
     expect(controlHeader).toHaveLength(1);
-    expect(wrapper.find(OverlayTrigger)).toHaveLength(1);
+    expect(wrapper.find(OverlayTrigger)).toExist();
   });
 
   it('renders a Popover with a SketchPicker', () => {

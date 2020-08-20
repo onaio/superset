@@ -21,14 +21,14 @@ import React from 'react';
 import sinon from 'sinon';
 import { shallow } from 'enzyme';
 
+import OnPasteSelect from 'src/components/Select/OnPasteSelect';
 import AdhocFilter, {
   EXPRESSION_TYPES,
   CLAUSES,
-} from '../../../../src/explore/AdhocFilter';
-import AdhocFilterControl from '../../../../src/explore/components/controls/AdhocFilterControl';
-import AdhocMetric from '../../../../src/explore/AdhocMetric';
-import { AGGREGATES, OPERATORS } from '../../../../src/explore/constants';
-import OnPasteSelect from '../../../../src/components/OnPasteSelect';
+} from 'src/explore/AdhocFilter';
+import AdhocFilterControl from 'src/explore/components/controls/AdhocFilterControl';
+import AdhocMetric from 'src/explore/AdhocMetric';
+import { AGGREGATES, OPERATORS } from 'src/explore/constants';
 
 const simpleAdhocFilter = new AdhocFilter({
   expressionType: EXPRESSION_TYPES.SIMPLE,
@@ -75,7 +75,7 @@ function setup(overrides) {
 describe('AdhocFilterControl', () => {
   it('renders an onPasteSelect', () => {
     const { wrapper } = setup();
-    expect(wrapper.find(OnPasteSelect)).toHaveLength(1);
+    expect(wrapper.find(OnPasteSelect)).toExist();
   });
 
   it('handles saved metrics being selected to filter on', () => {

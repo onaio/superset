@@ -19,18 +19,17 @@
 import React from 'react';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-
 import { shallow } from 'enzyme';
 import sinon from 'sinon';
 import fetchMock from 'fetch-mock';
-
 import shortid from 'shortid';
+import sqlLabReducer from 'src/SqlLab/reducers/index';
+import * as actions from 'src/SqlLab/actions/sqlLab';
+import ExploreResultsButton from 'src/SqlLab/components/ExploreResultsButton';
+import * as exploreUtils from 'src/explore/exploreUtils';
+import Button from 'src/components/Button';
+
 import { queries, queryWithBadColumns } from './fixtures';
-import sqlLabReducer from '../../../src/SqlLab/reducers/index';
-import * as actions from '../../../src/SqlLab/actions/sqlLab';
-import ExploreResultsButton from '../../../src/SqlLab/components/ExploreResultsButton';
-import * as exploreUtils from '../../../src/explore/exploreUtils';
-import Button from '../../../src/components/Button';
 
 describe('ExploreResultsButton', () => {
   const middlewares = [thunk];
@@ -66,12 +65,10 @@ describe('ExploreResultsButton', () => {
   };
   const mockChartTypeBarChart = {
     label: 'Distribution - Bar Chart',
-    requiresTime: false,
     value: 'dist_bar',
   };
   const mockChartTypeTB = {
     label: 'Time Series - Bar Chart',
-    requiresTime: true,
     value: 'bar',
   };
   const getExploreResultsButtonWrapper = (props = mockedProps) =>
@@ -102,6 +99,7 @@ describe('ExploreResultsButton', () => {
       '1',
       '123',
       'CASE WHEN 1=1 THEN 1 ELSE 0 END',
+      '__TIMESTAMP',
     ]);
 
     const msgWrapper = shallow(wrapper.instance().renderInvalidColumnMessage());
@@ -110,7 +108,7 @@ describe('ExploreResultsButton', () => {
 
   it('renders a Button', () => {
     const wrapper = getExploreResultsButtonWrapper();
-    expect(wrapper.find(Button)).toHaveLength(1);
+    expect(wrapper.find(Button)).toExist();
   });
 
   describe('datasourceName', () => {
@@ -178,86 +176,90 @@ describe('ExploreResultsButton', () => {
     fetchMock.post(visualizeEndpoint, visualizationPayload);
 
     beforeEach(() => {
-      sinon.stub(exploreUtils, 'getExploreUrlAndPayload').callsFake(() => ({
-        url: 'mockURL',
-        payload: { datasource: '107__table' },
-      }));
+      sinon.stub(exploreUtils, 'getExploreUrl').callsFake(() => 'mockURL');
       sinon.spy(exploreUtils, 'exportChart');
+      sinon.spy(exploreUtils, 'exploreChart');
       sinon
         .stub(wrapper.instance(), 'buildVizOptions')
         .callsFake(() => mockOptions);
     });
     afterEach(() => {
-      exploreUtils.getExploreUrlAndPayload.restore();
+      exploreUtils.getExploreUrl.restore();
+      exploreUtils.exploreChart.restore();
       exploreUtils.exportChart.restore();
       wrapper.instance().buildVizOptions.restore();
       fetchMock.reset();
     });
 
-    it('should build request with correct args', done => {
-      wrapper.instance().visualize();
+    it('should build request with correct args', () => {
+      return new Promise(done => {
+        wrapper.instance().visualize();
 
-      setTimeout(() => {
-        const calls = fetchMock.calls(visualizeEndpoint);
-        expect(calls).toHaveLength(1);
-        const formData = calls[0][1].body;
+        setTimeout(() => {
+          const calls = fetchMock.calls(visualizeEndpoint);
+          expect(calls).toHaveLength(1);
+          const formData = calls[0][1].body;
+          Object.keys(mockOptions).forEach(key => {
+            // eslint-disable-next-line no-unused-expressions
+            expect(formData.get(key)).toBeDefined();
+          });
 
-        Object.keys(mockOptions).forEach(key => {
-          // eslint-disable-next-line no-unused-expressions
-          expect(formData.get(key)).toBeDefined();
+          done();
+        });
+      });
+    });
+
+    it('should export chart and add an info toast', () => {
+      return new Promise(done => {
+        const infoToastSpy = sinon.spy();
+        const datasourceSpy = sinon.stub();
+
+        datasourceSpy.callsFake(() => Promise.resolve(visualizationPayload));
+
+        wrapper.setProps({
+          actions: {
+            addInfoToast: infoToastSpy,
+            createDatasource: datasourceSpy,
+          },
         });
 
-        done();
+        wrapper.instance().visualize();
+
+        setTimeout(() => {
+          expect(datasourceSpy.callCount).toBe(1);
+          expect(exploreUtils.exploreChart.callCount).toBe(1);
+          expect(exploreUtils.exploreChart.getCall(0).args[0].datasource).toBe(
+            '107__table',
+          );
+          expect(infoToastSpy.callCount).toBe(1);
+          done();
+        });
       });
     });
 
-    it('should export chart and add an info toast', done => {
-      const infoToastSpy = sinon.spy();
-      const datasourceSpy = sinon.stub();
+    it('should add error toast', () => {
+      return new Promise(done => {
+        const dangerToastSpy = sinon.stub(actions, 'addDangerToast');
+        const datasourceSpy = sinon.stub();
 
-      datasourceSpy.callsFake(() => Promise.resolve(visualizationPayload));
+        datasourceSpy.callsFake(() => Promise.reject({ error: 'error' }));
 
-      wrapper.setProps({
-        actions: {
-          addInfoToast: infoToastSpy,
-          createDatasource: datasourceSpy,
-        },
-      });
+        wrapper.setProps({
+          actions: {
+            createDatasource: datasourceSpy,
+            addDangerToast: dangerToastSpy,
+          },
+        });
 
-      wrapper.instance().visualize();
+        wrapper.instance().visualize();
 
-      setTimeout(() => {
-        expect(datasourceSpy.callCount).toBe(1);
-        expect(exploreUtils.exportChart.callCount).toBe(1);
-        expect(exploreUtils.exportChart.getCall(0).args[0].datasource).toBe(
-          '107__table',
-        );
-        expect(infoToastSpy.callCount).toBe(1);
-        done();
-      });
-    });
-
-    it('should add error toast', done => {
-      const dangerToastSpy = sinon.stub(actions, 'addDangerToast');
-      const datasourceSpy = sinon.stub();
-
-      datasourceSpy.callsFake(() => Promise.reject({ error: 'error' }));
-
-      wrapper.setProps({
-        actions: {
-          createDatasource: datasourceSpy,
-          addDangerToast: dangerToastSpy,
-        },
-      });
-
-      wrapper.instance().visualize();
-
-      setTimeout(() => {
-        expect(datasourceSpy.callCount).toBe(1);
-        expect(exploreUtils.exportChart.callCount).toBe(0);
-        expect(dangerToastSpy.callCount).toBe(1);
-        dangerToastSpy.restore();
-        done();
+        setTimeout(() => {
+          expect(datasourceSpy.callCount).toBe(1);
+          expect(exploreUtils.exportChart.callCount).toBe(0);
+          expect(dangerToastSpy.callCount).toBe(1);
+          dangerToastSpy.restore();
+          done();
+        });
       });
     });
   });

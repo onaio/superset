@@ -18,9 +18,9 @@
  */
 import React from 'react';
 import { mount } from 'enzyme';
-import ModalTrigger from './../../../../src/components/ModalTrigger';
-
-import { DisplayQueryButton } from '../../../../src/explore/components/DisplayQueryButton';
+import ModalTrigger from 'src/components/ModalTrigger';
+import { DisplayQueryButton } from 'src/explore/components/DisplayQueryButton';
+import { MenuItem } from 'react-bootstrap';
 
 describe('DisplayQueryButton', () => {
   const defaultProps = {
@@ -44,5 +44,6 @@ describe('DisplayQueryButton', () => {
   it('renders a dropdown', () => {
     const wrapper = mount(<DisplayQueryButton {...defaultProps} />);
     expect(wrapper.find(ModalTrigger)).toHaveLength(3);
+    expect(wrapper.find(MenuItem)).toHaveLength(5);
   });
 });

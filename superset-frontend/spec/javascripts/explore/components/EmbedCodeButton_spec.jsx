@@ -21,8 +21,8 @@ import { shallow, mount } from 'enzyme';
 import { OverlayTrigger } from 'react-bootstrap';
 import sinon from 'sinon';
 
-import EmbedCodeButton from '../../../../src/explore/components/EmbedCodeButton';
-import * as exploreUtils from '../../../../src/explore/exploreUtils';
+import EmbedCodeButton from 'src/explore/components/EmbedCodeButton';
+import * as exploreUtils from 'src/explore/exploreUtils';
 
 describe('EmbedCodeButton', () => {
   const defaultProps = {
@@ -37,7 +37,7 @@ describe('EmbedCodeButton', () => {
 
   it('renders overlay trigger', () => {
     const wrapper = shallow(<EmbedCodeButton {...defaultProps} />);
-    expect(wrapper.find(OverlayTrigger)).toHaveLength(1);
+    expect(wrapper.find(OverlayTrigger)).toExist();
   });
 
   it('returns correct embed code', () => {
