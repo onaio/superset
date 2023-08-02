@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Navassa Island",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "OBJECTID": 150, "iso3": "UMI", "adm0_name": "Navassa Island", "map_lab": "Navassa Island (USA)", "adm0_altnm": null, "adm0_id": 174, "mapclr": "USA", "rb": "-", "disp_area": "no", "stscod": "Territory", "source": "SALB", "source_dat": "2022-01-01", "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 0.08236440432, "Shape_Area": 0.00039537735, "ucode": "UMI9", "adm1_name": null, "adm1_altnm": null, "adm1_id": null, "salb_id": null, "source_id": null, "layer": "Global_bnd_adm0_WFP", "path": "C:/Users/Julian/Documents/gis_layers/230207_global_bnd_adm0_wfp/Global_bnd_adm0_WFP.shp" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ -75.005056747999959, 18.391080553000052 ], [ -75.008489974999975, 18.38886039700003 ], [ -75.014707930999975, 18.390845948000049 ], [ -75.019873029999985, 18.396259003000068 ], [ -75.024458296999967, 18.405566865000026 ], [ -75.027792342999987, 18.407254868000052 ], [ -75.029631026999937, 18.410749131000046 ], [ -75.028616316999944, 18.41279380900005 ], [ -75.024267561999977, 18.41315239000005 ], [ -75.017355330999976, 18.410001450000038 ], [ -75.007002242999988, 18.409528427000055 ], [ -75.002737410999941, 18.406667404000075 ], [ -75.001402266999946, 18.400432283000043 ], [ -75.003034956999954, 18.394942934000028 ], [ -75.005056747999959, 18.391080553000052 ] ] ] ] } }
+]
+}

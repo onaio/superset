@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Tromelin Island",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "OBJECTID": 209, "iso3": "xFR", "adm0_name": "Tromelin Island", "map_lab": "Tromelin Island (Fr.)", "adm0_altnm": null, "adm0_id": 247, "mapclr": "FRA", "rb": "-", "disp_area": "no", "stscod": "Territory", "source": "SALB", "source_dat": "2022-01-01", "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 0.04231377686, "Shape_Area": 0.00011796714, "ucode": "xFR1", "adm1_name": null, "adm1_altnm": null, "adm1_id": null, "salb_id": null, "source_id": null, "layer": "Global_bnd_adm0_WFP", "path": "C:/Users/Julian/Documents/gis_layers/230207_global_bnd_adm0_wfp/Global_bnd_adm0_WFP.shp" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ 54.530285176000064, -15.894080026999973 ], [ 54.528293903000076, -15.898176057999933 ], [ 54.523311910000075, -15.897843224999974 ], [ 54.519844350000028, -15.893635614999937 ], [ 54.516884144000073, -15.888059480999971 ], [ 54.518158253000081, -15.884394509999936 ], [ 54.523845966000067, -15.884754997999949 ], [ 54.527782734000027, -15.889202934999958 ], [ 54.530285176000064, -15.894080026999973 ] ] ] ] } }
+]
+}

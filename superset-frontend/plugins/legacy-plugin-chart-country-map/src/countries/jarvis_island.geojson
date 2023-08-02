@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Jarvis Island",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "OBJECTID": 106, "iso3": "UMI", "adm0_name": "Jarvis Island", "map_lab": "Jarvis Is. (USA)", "adm0_altnm": null, "adm0_id": 127, "mapclr": "USA", "rb": "-", "disp_area": "no", "stscod": "Territory", "source": "SALB", "source_dat": "2022-01-01", "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 0.07709905613, "Shape_Area": 0.00038783637, "ucode": "UMI4", "adm1_name": null, "adm1_altnm": null, "adm1_id": null, "salb_id": null, "source_id": null, "layer": "Global_bnd_adm0_WFP", "path": "C:/Users/Julian/Documents/gis_layers/230207_global_bnd_adm0_wfp/Global_bnd_adm0_WFP.shp" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ -159.98977453599997, -0.382263247999958 ], [ -159.993894408999978, -0.382972214999938 ], [ -159.998929807999986, -0.381384168999944 ], [ -160.01196081599997, -0.380985175999967 ], [ -160.013349364999982, -0.378228222999951 ], [ -160.009946653999975, -0.371536259999971 ], [ -160.00132543899997, -0.366606209999929 ], [ -159.997861692999976, -0.362961237999968 ], [ -159.991239379999968, -0.363621239999929 ], [ -159.98710424799998, -0.36751613399997 ], [ -159.984800170999961, -0.372800266999946 ], [ -159.985685179999962, -0.376948122999977 ], [ -159.98977453599997, -0.382263247999958 ] ] ] ] } }
+]
+}

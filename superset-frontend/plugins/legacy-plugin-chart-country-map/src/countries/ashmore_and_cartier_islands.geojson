@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Ashmore and Cartier Islands",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "OBJECTID": 14, "iso3": "AUS", "adm0_name": "Ashmore and Cartier Islands", "map_lab": "Ashmore & Cartier Is. (Aust.)", "adm0_altnm": null, "adm0_id": 16, "mapclr": "AUS", "rb": "-", "disp_area": "no", "stscod": "Territory", "source": "SALB", "source_dat": "2022-01-01", "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 0.08550174328, "Shape_Area": 0.00017152333, "ucode": "AUS1", "adm1_name": null, "adm1_altnm": null, "adm1_id": null, "salb_id": null, "source_id": null, "layer": "Global_bnd_adm0_WFP", "path": "C:/Users/Julian/Documents/gis_layers/230207_global_bnd_adm0_wfp/Global_bnd_adm0_WFP.shp" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ 122.97309, -12.27742 ], [ 122.968629999000086, -12.27972 ], [ 122.963750000000118, -12.27764 ], [ 122.962110001000042, -12.272890000999951 ], [ 122.96445, -12.268690000999982 ], [ 122.972829999000055, -12.269830000999946 ], [ 122.97447000000011, -12.27358 ], [ 122.97309, -12.27742 ] ] ], [ [ [ 123.559530000000109, -12.53 ], [ 123.55486, -12.53257999899995 ], [ 123.55286, -12.53108 ], [ 123.5565, -12.52736 ], [ 123.559530000000109, -12.53 ] ] ], [ [ [ 122.94039, -12.25675 ], [ 122.93011, -12.25675 ], [ 122.92869999900006, -12.251 ], [ 122.93625, -12.25008 ], [ 122.94039, -12.25675 ] ] ] ] } }
+]
+}

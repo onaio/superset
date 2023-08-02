@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Howland Island",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "OBJECTID": 97, "iso3": "UMI", "adm0_name": "Howland Island", "map_lab": "Howland Is. (USA)", "adm0_altnm": null, "adm0_id": 112, "mapclr": "USA", "rb": "-", "disp_area": "no", "stscod": "Territory", "source": "SALB", "source_dat": "2022-01-01", "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 0.06038977244, "Shape_Area": 0.00018656366, "ucode": "UMI3", "adm1_name": null, "adm1_altnm": null, "adm1_id": null, "salb_id": null, "source_id": null, "layer": "Global_bnd_adm0_WFP", "path": "C:/Users/Julian/Documents/gis_layers/230207_global_bnd_adm0_wfp/Global_bnd_adm0_WFP.shp" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ -176.612864606999977, 0.796731421000061 ], [ -176.614763711999984, 0.794162810000046 ], [ -176.61716021999996, 0.794537265000031 ], [ -176.61912088699998, 0.797219437000024 ], [ -176.620492678999966, 0.807586315000037 ], [ -176.623882680999969, 0.816796208000028 ], [ -176.621838003999983, 0.819552208000061 ], [ -176.617834237999972, 0.817978112000048 ], [ -176.614539038999965, 0.814832695000064 ], [ -176.612442094999977, 0.809740115000068 ], [ -176.611596804999976, 0.805769445000067 ], [ -176.611693185999968, 0.79903071800004 ], [ -176.612864606999977, 0.796731421000061 ] ] ] ] } }
+]
+}
