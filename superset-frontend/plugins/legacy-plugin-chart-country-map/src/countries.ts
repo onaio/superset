@@ -310,7 +310,6 @@ import yemen from './countries/yemen.geojson';
 import zambia from './countries/zambia.geojson';
 import zimbabwe from './countries/zimbabwe.geojson';
 
-
 export const countries = {
   abyei,
   afghanistan,
