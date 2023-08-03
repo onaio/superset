@@ -27,7 +27,7 @@ import {
   logging,
   t,
 } from '@superset-ui/core';
-import Datamap from 'datamaps/dist/datamaps.world.hires.min';
+import Datamap from 'datamaps/dist/datamaps.all.hires';
 import { ColorBy } from './utils';
 
 const propTypes = {
