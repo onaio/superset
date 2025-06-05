@@ -93,6 +93,7 @@ import singapore from './countries/singapore.geojson';
 import slovenia from './countries/slovenia.geojson';
 import spain from './countries/spain.geojson';
 import sri_lanka from './countries/sri_lanka.geojson';
+import sudan from './countries/sudan.geojson';
 import sweden from './countries/sweden.geojson';
 import switzerland from './countries/switzerland.geojson';
 import syria from './countries/syria.geojson';
@@ -190,6 +191,7 @@ export const countries = {
   slovenia,
   spain,
   sri_lanka,
+  sudan,
   sweden,
   switzerland,
   syria,
