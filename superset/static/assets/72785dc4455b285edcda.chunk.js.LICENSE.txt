@@ -1,0 +1,12 @@
+/*!
+	Copyright (c) 2018 Jed Watson.
+	Licensed under the MIT License (MIT), see
+	http://jedwatson.github.io/classnames
+*/
+
+/**
+ * @name match-sorter
+ * @license MIT license.
+ * @copyright (c) 2020 Kent C. Dodds
+ * @author Kent C. Dodds <me@kentcdodds.com> (https://kentcdodds.com)
+ */
